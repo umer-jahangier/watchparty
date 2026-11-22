@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>WatchParty Web: watch together in any browser</title>
+  <meta name="description" content="Watch YouTube and video links together, in sync, on any browser and phone. Chat, react and send love. No install." />
+  <meta name="theme-color" content="#0c0812" />
+  <meta name="author" content="Umer Jahangier" />
+  <link rel="preload" href="../fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="app.css?v={{VERSION}}" />
+</head>
+<body>
+  <!-- start / join -->
+  <main id="landing" class="landing hidden">
+    <nav class="top">
+      <a class="brand" href="../"><span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="#fff"/></svg></span>WatchParty <span class="tag">Web</span></a>
+    </nav>
+    <section class="hero">
+      <h1>Watch together, <em>right in your browser.</em></h1>
+      <p class="lead">Paste a YouTube or video link, share the room, and everyone stays in sync. Works on phones too, no install.</p>
+
+      <form id="start-form" class="card">
+        <label for="start-url">Video link</label>
+        <input id="start-url" inputmode="url" autocomplete="off" placeholder="https://youtube.com/watch?v=…" />
+        <p id="start-err" class="err hidden" role="alert"></p>
+        <button class="btn" type="submit">Start watching together</button>
+      </form>
+
+      <form id="join-form" class="card join">
+        <label for="join-code">Got a party code?</label>
+        <div class="row">
+          <input id="join-code" maxlength="20" autocomplete="off" spellcheck="false" placeholder="Code, like K7Q2MX-9F4TB-2W8QH" />
+          <button class="btn ghost" type="submit">Join</button>
+        </div>
+        <p id="join-err" class="err hidden" role="alert"></p>
+      </form>
+
+      <div class="card you">
+        <label for="me-name">Your name</label>
+        <input id="me-name" maxlength="24" autocomplete="nickname" placeholder="What friends see" />
+        <div class="faces" id="me-faces" role="group" aria-label="Avatar"></div>
+      </div>
+      <p class="fine">Watching on Netflix or other sites? Use the <a href="../">WatchParty extension</a> on a computer. Built with love by <a href="https://umer-jahangier.github.io" rel="author">Umer Jahangier</a>.</p>
+    </section>
+  </main>
+
+  <!-- room -->
+  <div id="room" class="room hidden">
+    <section class="stage">
+      <div id="player-box" class="player-box">
+        <div id="player-yt"></div>
+        <video id="player-video" class="hidden" playsinline controls preload="metadata"></video>
+        <div id="player-msg" class="player-msg hidden"></div>
+        <button id="tap-sync" class="tap-sync hidden" type="button">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>
+          Tap to watch in sync
+        </button>
+        <div id="fx" class="fx" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="WatchParty">
+      <header class="head">
+        <span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="#fff"/></svg></span>
+        <span class="brand-col">
+          <span class="title">WatchParty</span>
+          <span class="conn-row"><span id="conn" class="conn" data-state="connecting"><i></i><span>Connecting</span></span><span id="lock" class="lock hidden" title="End-to-end encrypted: only people with the full code can read chat, voice notes and reactions">🔒 Encrypted</span></span>
+        </span>
+        <button id="code-btn" class="code" type="button" title="Copy invite link"><span id="code-text">------</span>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
+        </button>
+        <button id="share-btn" class="icon-btn" type="button" aria-label="Share invite" title="Share invite">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+        </button>
+        <button id="more-btn" class="icon-btn" type="button" aria-expanded="false" aria-label="Settings" title="Settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+        </button>
+      </header>
+      <div id="banner" class="banner hidden" role="status"></div>
+
+      <div id="more" class="more hidden">
+        <div class="sec">
+          <div class="sec-title">You</div>
+          <input id="room-name" maxlength="24" autocomplete="nickname" aria-label="Your name" placeholder="Your name" />
+          <div class="faces" id="room-faces" role="group" aria-label="Avatar"></div>
+          <button id="queen-ask" class="queen-ask" type="button">👑 Are you the queen?</button>
+          <div id="queen" class="queen hidden" role="group" aria-label="Queen check">
+            <div class="queen-crown" aria-hidden="true">👑</div>
+            <div class="queen-title">The royal crown</div>
+            <p>The crown is reserved for the queen. Are you her?</p>
+            <button id="queen-yes" type="button">Yes, I'm the queen 👑</button>
+            <button id="queen-no" type="button">Not now</button>
+          </div>
+        </div>
+        <form id="change-form" class="sec host-only">
+          <div class="sec-title">Change video</div>
+          <div class="row">
+            <input id="change-url" inputmode="url" autocomplete="off" placeholder="Paste a new link" aria-label="New video link" />
+            <button class="btn small" type="submit">Play</button>
+          </div>
+        </form>
+        <button id="leave-btn" class="leave" type="button">Leave party</button>
+        <p class="fine">Built with love by <a href="https://umer-jahangier.github.io" target="_blank" rel="noopener author">Umer Jahangier</a> · <a href="https://github.com/umer-jahangier" target="_blank" rel="noopener">GitHub</a></p>
+      </div>
+
+      <div id="people" class="people" aria-label="People in the party"></div>
+      <div id="chat" class="chat" role="log" aria-live="polite"></div>
+
+      <div class="compose">
+        <button id="love-btn" class="love" type="button"><span class="love-heart" aria-hidden="true">💖</span>Send love</button>
+        <div id="reacts" class="reacts"></div>
+        <div id="picker" class="picker hidden"></div>
+        <form id="chat-form" class="input">
+          <button id="emoji-btn" class="tool" type="button" aria-label="Insert emoji">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.2c.9 1.3 2.1 2 3.5 2s2.6-.7 3.5-2M9.2 9.6h.01M14.8 9.6h.01"/></svg>
+          </button>
+          <input id="chat-input" maxlength="240" autocomplete="off" placeholder="Message the party" aria-label="Message the party" />
+          <button id="voice-btn" class="tool" type="button" aria-label="Record a voice message">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3"/></svg>
+          </button>
+          <button class="send" type="submit" aria-label="Send">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+      </div>
+    </aside>
+  </div>
+
+  <!-- name prompt when opening an invite -->
+  <div id="name-gate" class="gate hidden" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+    <form id="gate-form" class="card gate-card">
+      <h2 id="gate-title">Joining the party</h2>
+      <label for="gate-name">Your name</label>
+      <input id="gate-name" maxlength="24" autocomplete="nickname" placeholder="What friends see" />
+      <div class="faces" id="gate-faces" role="group" aria-label="Avatar"></div>
+      <p id="gate-err" class="err hidden" role="alert"></p>
+      <button class="btn" type="submit">Join</button>
+    </form>
+  </div>
+
+  <script src="icons.js?v={{VERSION}}"></script>
+  <script src="e2e.js?v={{VERSION}}"></script>
+  <script src="app.js?v={{VERSION}}"></script>
+</body>
+</html>

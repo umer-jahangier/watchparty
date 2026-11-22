@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WatchParty</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>
+    <div class="titles">
+      <h1>WatchParty</h1>
+      <p class="sub">Watch anything together, in sync</p>
+    </div>
+    <span id="ver" class="ver">…</span>
+  </header>
+
+  <section id="update" class="update hidden" aria-live="polite">
+    <div class="update-head">
+      <span class="update-dot" aria-hidden="true"></span>
+      <div>
+        <strong id="update-title">Update available</strong>
+        <p id="update-notes"></p>
+      </div>
+    </div>
+    <div id="update-bar" class="bar hidden"><i></i></div>
+    <button id="update-now" class="primary" type="button">Update now</button>
+    <p id="update-help" class="update-help hidden"></p>
+  </section>
+  <p id="updated" class="updated hidden"></p>
+
+  <section class="you">
+    <label for="name">Your name</label>
+    <input id="name" maxlength="24" placeholder="What friends see" autocomplete="nickname" />
+    <div class="faces" id="faces" role="group" aria-label="Avatar"></div>
+  </section>
+
+  <section id="idle" class="panel">
+    <button id="create" class="primary" type="button">Start a party on this tab</button>
+    <div class="or"><span>or join a friend</span></div>
+    <form class="row" id="join-form">
+      <input id="code" maxlength="20" placeholder="Code, like K7Q2MX-9F4TB-2W8QH" autocomplete="off" spellcheck="false" aria-label="Party code" />
+      <button id="join" class="secondary" type="submit">Join</button>
+    </form>
+    <p id="novideo" class="note hidden">No video found on this tab yet. Open the video page first, then start or join.</p>
+  </section>
+
+  <section id="active" class="panel hidden">
+    <div class="live">
+      <div>
+        <span id="conn" class="conn" data-state="live"><i></i><span>Live</span></span>
+        <strong id="active-code" class="code">------</strong>
+        <span id="role" class="role"></span>
+        <span id="lock" class="lock hidden">🔒 End-to-end encrypted</span>
+      </div>
+      <button id="copy" class="ghost" type="button">Copy code</button>
+    </div>
+    <button id="copy-link" class="primary" type="button">Copy invite link</button>
+    <p id="link" class="link"></p>
+    <button id="leave" class="danger" type="button">Leave party</button>
+  </section>
+
+  <section class="vpn">
+    <div class="vpn-row">
+      <div>
+        <strong>VPN-friendly mode</strong>
+        <p id="vpn-text">Using a VPN? Turn this on and WatchParty checks for it, keeps your party connected and sends calls through its encrypted relay.</p>
+      </div>
+      <button id="vpn-toggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="VPN-friendly mode"><i></i></button>
+    </div>
+  </section>
+
+  <p id="status" class="status" role="status" aria-live="polite"></p>
+  <footer>
+    <span><span id="keys">Alt+Shift+W panel · Alt+Shift+M mic · Alt+Shift+C camera · Alt+Shift+Y chat</span> · <a href="#" id="shortcuts">Change shortcuts</a></span>
+    <span class="credit">Built with love by <a href="https://umer-jahangier.github.io" target="_blank" rel="noopener author">Umer Jahangier</a> · <a href="https://github.com/umer-jahangier" target="_blank" rel="noopener">GitHub</a></span>
+  </footer>
+  <script src="../content/icons.js"></script>
+  <script src="../content/vpn.js"></script>
+  <script src="popup.js"></script>
+  <script src="update-core.js"></script>
+  <script src="updater.js"></script>
+</body>
+</html>

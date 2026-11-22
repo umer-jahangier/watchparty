@@ -1,0 +1,41 @@
+// Renders 1280x800 store screenshots with headless Chrome (Chrome DevTools Protocol, no extra packages).
+import { spawn } from "node:child_process";
+import fs from "node:fs";
+const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const PORT = 9333;
+const proc = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${PORT}`, "--user-data-dir=/tmp/wp-chrome-shots", "--hide-scrollbars", "--window-size=1280,800", "--no-first-run", "about:blank"], { stdio: "ignore" });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let targets;
+for (let i = 0; i < 40; i++) { try { targets = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json(); if (targets.length) break; } catch {} await sleep(250); }
+const page = targets.find((t) => t.type === "page");
+const ws = new WebSocket(page.webSocketDebuggerUrl);
+await new Promise((r) => (ws.onopen = r));
+let id = 0; const pending = new Map();
+ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };
+const cdp = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
+const evaluate = async (expr) => (await cdp("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true })).result?.result?.value;
+await cdp("Page.enable");
+await cdp("Emulation.setDeviceMetricsOverride", { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+await cdp("Page.navigate", { url: "http://localhost:4321/shots/index.html" });
+await sleep(2500);
+console.log(await evaluate(`(async()=>{ const r = await wpCall({type:'WP_CREATE', name:'Umer', icon:'fox'}); const p=WP_E2E.parse(r.full); const key=await WP_E2E.deriveKey(p.code,p.secret);
+  const g=new WebSocket('wss://cp.praivox.com/wp-ws/ws'); await new Promise(x=>g.onopen=x);
+  g.send(JSON.stringify({t:'hello',code:p.code,name:'Wifey',icon:'cat',role:'guest',cid:'shotguest'+Date.now(),queen:true})); await new Promise(x=>setTimeout(x,700));
+  window.__say=async(kind,obj)=>{g.send(JSON.stringify({t:'e2e',kind,...(await WP_E2E.seal(key,kind,obj))})); await new Promise(x=>setTimeout(x,500));};
+  g.send(JSON.stringify({t:'chat',system:true,text:'Wifey paused at 41:02'})); await new Promise(x=>setTimeout(x,500));
+  await __say('chat',{text:'wait, is he the dad?? \\u{1F62D}'}); return 'party '+r.full; })()`));
+// host types a reply with real (trusted) keyboard input
+await evaluate(`document.querySelector('.wp-input input').focus()`);
+await cdp("Input.insertText", { text: "don't say it out loud 😂" });
+await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: "\r" });
+await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
+await sleep(600);
+await evaluate(`(async()=>{ await __say('chat',{text:'\\u{1F970}'}); await __say('react',{emoji:'\\u2764\\uFE0F'}); })()`);
+await sleep(900);
+fs.writeFileSync("/tmp/wp-work/shots/store-1-chat.png", Buffer.from((await cdp("Page.captureScreenshot", { format: "png" })).result.data, "base64"));
+await sleep(2500);
+await evaluate(`(async()=>{ await __say('love',{}); })()`);
+await sleep(1300);
+fs.writeFileSync("/tmp/wp-work/shots/store-2-love.png", Buffer.from((await cdp("Page.captureScreenshot", { format: "png" })).result.data, "base64"));
+await evaluate(`wpCall({type:'WP_LEAVE'})`);
+ws.close(); proc.kill(); console.log("saved"); process.exit(0);

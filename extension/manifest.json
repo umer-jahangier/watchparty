@@ -1,0 +1,97 @@
+{
+  "manifest_version": 3,
+  "name": "WatchParty",
+  "version": "4.6.1",
+  "description": "Watch videos together on any site: synced playback, chat, reactions, voice notes and calls.",
+  "action": {
+    "default_title": "WatchParty",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "downloads",
+    "downloads.ui",
+    "alarms"
+  ],
+  "commands": {
+    "toggle-panel": {
+      "suggested_key": {
+        "default": "Alt+Shift+W"
+      },
+      "description": "Show or hide WatchParty chat"
+    },
+    "toggle-mic": {
+      "suggested_key": {
+        "default": "Alt+Shift+M"
+      },
+      "description": "Toggle microphone"
+    },
+    "toggle-cam": {
+      "suggested_key": {
+        "default": "Alt+Shift+C"
+      },
+      "description": "Toggle camera"
+    },
+    "focus-chat": {
+      "suggested_key": {
+        "default": "Alt+Shift+Y"
+      },
+      "description": "Focus party chat"
+    }
+  },
+  "host_permissions": [
+    "https://cp.praivox.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "js": [
+        "content/page-bridge.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*/*",
+        "http://*/*"
+      ],
+      "js": [
+        "lib/peerjs.min.js",
+        "content/icons.js",
+        "content/e2e.js",
+        "content/vpn.js",
+        "content/content.js"
+      ],
+      "css": [
+        "content/overlay.css"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+  }
+}

@@ -1,0 +1,894 @@
+/* WatchParty 4.0 overlay. Everything is scoped to ids and resets with all:initial so
+   host-page CSS cannot leak in. The site's own <video> is never styled. */
+
+/* ---------- page reflow (panel docked on the right) ---------- */
+html.wp-reflow body {
+  width: calc(100vw - var(--wp-rail, 0px)) !important;
+  max-width: calc(100vw - var(--wp-rail, 0px)) !important;
+  box-sizing: border-box !important;
+  margin-right: 0 !important;
+}
+html.wp-reflow [data-wp-fit="1"] { max-width: calc(100vw - var(--wp-rail, 0px)) !important; }
+html.wp-reflow [data-wp-fit="pin"] {
+  right: var(--wp-rail, 0px) !important;
+  max-width: calc(100vw - var(--wp-rail, 0px)) !important;
+}
+html.wp-reflow #masthead-container,
+html.wp-reflow ytd-masthead#masthead { width: calc(100vw - var(--wp-rail, 0px)) !important; }
+
+/* ---------- "Fullscreen with chat": site player (with its controls) on the left ---------- */
+html.wp-stage,
+html.wp-stage body { background: #000 !important; overflow: hidden !important; }
+html.wp-stage body *:not([data-wp-stage]):not([data-wp-stage] *) { visibility: hidden !important; }
+html.wp-stage [data-wp-stage] {
+  visibility: visible !important;
+  position: fixed !important;
+  inset: 0 auto auto 0 !important;
+  width: calc(100vw - var(--wp-rail, 0px)) !important;
+  height: 100vh !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  transform: none !important;
+  z-index: 2147483600 !important;
+  background: #000 !important;
+}
+
+/* ---------- root ---------- */
+#watchparty-root {
+  all: initial;
+  --wp-ink-0: #0c0812;
+  --wp-ink-1: #140e1e;
+  --wp-ink-2: #1c1429;
+  --wp-ink-3: #281d39;
+  --wp-ink-4: #34274a;
+  --wp-line: rgba(205, 180, 255, 0.11);
+  --wp-text: #f4effc;
+  --wp-text-2: #bdb2d3;
+  --wp-text-3: #9387ac;
+  --wp-violet: #8b5cf6;
+  --wp-pink: #ec4899;
+  --wp-focus: #c9a6ff;
+  --wp-grad: linear-gradient(135deg, #8b5cf6 0%, #d946ef 55%, #ec4899 100%);
+  --wp-live: #34d399;
+  --wp-warn: #fbbf24;
+  --wp-danger: #f43f5e;
+  --wp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  position: fixed;
+  z-index: 2147483646;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  font: 400 13.5px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  color: var(--wp-text);
+  -webkit-font-smoothing: antialiased;
+  pointer-events: none;
+}
+#watchparty-root *,
+#watchparty-root *::before,
+#watchparty-root *::after { box-sizing: border-box; font: inherit; color: inherit; letter-spacing: normal; text-transform: none; }
+#watchparty-root .hidden { display: none !important; }
+#watchparty-root button {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+#watchparty-root button:disabled { cursor: default; opacity: 0.42; }
+#watchparty-root button:focus-visible,
+#watchparty-root input:focus-visible { outline: 2px solid var(--wp-focus); outline-offset: 2px; }
+#watchparty-root ::selection { background: rgba(139, 92, 246, 0.55); color: #fff; }
+#watchparty-root svg { display: block; flex: none; }
+
+#watchparty-root.wp-infs { position: absolute; height: 100%; }
+
+/* ---------- panel ---------- */
+#watchparty-root .wp-panel {
+  pointer-events: auto;
+  width: 360px;
+  max-width: 100vw;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--wp-ink-1);
+  border-left: 1px solid var(--wp-line);
+  box-shadow: -18px 0 48px -24px rgba(0, 0, 0, 0.7);
+}
+#watchparty-root.wp-infs .wp-panel {
+  background: rgba(20, 14, 30, 0.9);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+#watchparty-root.wp-min .wp-panel { display: none; }
+
+#watchparty-root.wp-pop { height: auto; }
+#watchparty-root.wp-pop .wp-panel {
+  border: 1px solid var(--wp-line);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px -16px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+#watchparty-root.wp-pop .wp-head { cursor: grab; }
+
+/* header */
+#watchparty-root .wp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 10px 12px 14px;
+  border-bottom: 1px solid var(--wp-line);
+}
+#watchparty-root .wp-mark,
+#watchparty-root .wp-pill-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--wp-grad);
+  color: #fff;
+  flex: none;
+  box-shadow: 0 6px 16px -6px rgba(217, 70, 239, 0.7);
+}
+#watchparty-root .wp-brand { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+#watchparty-root .wp-title { font-weight: 650; font-size: 14px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#watchparty-root .wp-conn { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--wp-text-3); }
+#watchparty-root .wp-conn i { width: 7px; height: 7px; border-radius: 50%; background: var(--wp-text-3); }
+#watchparty-root .wp-conn[data-state="live"] i { background: var(--wp-live); box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.18); }
+#watchparty-root .wp-conn[data-state="live"] { color: #a7e9cf; }
+#watchparty-root .wp-conn[data-state="connecting"] i,
+#watchparty-root .wp-conn[data-state="reconnecting"] i { background: var(--wp-warn); animation: wp-blink 1.1s ease-in-out infinite; }
+#watchparty-root .wp-conn[data-state="reconnecting"] { color: #fcd98a; }
+
+#watchparty-root .wp-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px 0 10px;
+  border-radius: 8px;
+  background: var(--wp-ink-3);
+  font-weight: 650;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  transition: background 0.15s;
+}
+#watchparty-root .wp-code:hover { background: var(--wp-ink-4); }
+#watchparty-root .wp-code-hint { color: var(--wp-text-3); }
+#watchparty-root .wp-code-hint svg { width: 15px; height: 15px; }
+#watchparty-root .wp-code.copied { background: rgba(52, 211, 153, 0.22); animation: wp-copied 0.42s var(--wp-ease); }
+#watchparty-root .wp-code.copied .wp-code-text { color: transparent; position: relative; }
+#watchparty-root .wp-code.copied .wp-code-text::after { content: "Copied ✓"; position: absolute; left: 0; color: #a7f3d0; letter-spacing: 0; white-space: nowrap; }
+@keyframes wp-copied { 0% { transform: scale(1); } 35% { transform: scale(1.07); } 100% { transform: scale(1); } }
+
+#watchparty-root .wp-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--wp-text-2);
+  transition: background 0.15s, color 0.15s;
+}
+#watchparty-root .wp-icon-btn:hover { background: var(--wp-ink-3); color: var(--wp-text); }
+#watchparty-root .wp-morebtn[aria-expanded="true"] { background: var(--wp-ink-3); color: var(--wp-text); }
+
+/* connection banner */
+#watchparty-root .wp-banner {
+  margin: 10px 12px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fde3a7;
+}
+#watchparty-root .wp-banner[data-kind="ok"] { background: rgba(52, 211, 153, 0.13); color: #b5f0d9; }
+
+/* settings drawer */
+#watchparty-root .wp-more {
+  padding: 6px 14px 14px;
+  border-bottom: 1px solid var(--wp-line);
+  background: var(--wp-ink-0);
+  max-height: 56vh;
+  overflow-y: auto;
+}
+#watchparty-root .wp-sec { padding-top: 12px; }
+#watchparty-root .wp-sec-title { font-size: 12px; font-weight: 650; color: var(--wp-text-3); margin-bottom: 8px; }
+#watchparty-root .wp-name input {
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: var(--wp-ink-2);
+  border: 1px solid var(--wp-line);
+  color: var(--wp-text);
+  font: inherit;
+  cursor: text;
+}
+#watchparty-root .wp-name input::placeholder { color: var(--wp-text-3); }
+#watchparty-root .wp-faces { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-top: 10px; }
+#watchparty-root .wp-face-btn {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid transparent;
+  transition: transform 0.15s var(--wp-ease), border-color 0.15s;
+}
+#watchparty-root .wp-face-btn:hover { transform: scale(1.08); }
+#watchparty-root .wp-face-btn.on { border-color: var(--wp-focus); }
+#watchparty-root .wp-face-btn .wp-face { width: 100%; height: 100%; }
+#watchparty-root .wp-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+#watchparty-root .wp-tools button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--wp-ink-2);
+  border: 1px solid var(--wp-line);
+  font-size: 12.5px;
+  line-height: 1.25;
+  color: var(--wp-text-2);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+#watchparty-root .wp-tools button:hover { background: var(--wp-ink-3); color: var(--wp-text); }
+#watchparty-root .wp-tools button.on { border-color: rgba(201, 166, 255, 0.45); background: rgba(139, 92, 246, 0.16); color: var(--wp-text); }
+#watchparty-root .wp-leave-party {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 9px;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: #fda4b4;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+#watchparty-root .wp-leave-party:hover { background: rgba(244, 63, 94, 0.12); }
+
+/* people */
+#watchparty-root .wp-people {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--wp-line);
+}
+#watchparty-root .wp-people::-webkit-scrollbar { display: none; }
+#watchparty-root .wp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: 28px;
+  padding: 0 10px 0 3px;
+  border-radius: 999px;
+  background: var(--wp-ink-2);
+  font-size: 12.5px;
+  color: var(--wp-text-2);
+  white-space: nowrap;
+}
+#watchparty-root .wp-chip .wp-face { width: 22px; height: 22px; }
+#watchparty-root .wp-chip.me { color: var(--wp-text); background: var(--wp-ink-3); }
+#watchparty-root .wp-chip.me::after { content: "you"; font-size: 11px; color: var(--wp-text-3); }
+
+/* ring */
+#watchparty-root .wp-ring {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 12px 0;
+  padding: 10px 10px 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(236, 72, 153, 0.22));
+  border: 1px solid rgba(236, 72, 153, 0.35);
+}
+#watchparty-root .wp-ring-icon { color: #fff; animation: wp-ring 1.6s ease-in-out infinite; }
+#watchparty-root .wp-ring-text { flex: 1; font-size: 12.5px; font-weight: 600; }
+#watchparty-root .wp-ring button { padding: 6px 11px; border-radius: 8px; font-size: 12.5px; font-weight: 650; }
+#watchparty-root .wp-ring [data-act="accept"] { background: var(--wp-live); color: #062a1d; }
+#watchparty-root .wp-ring [data-act="decline"] { background: rgba(255, 255, 255, 0.1); }
+
+/* call */
+#watchparty-root .wp-body { padding: 10px 12px; border-bottom: 1px solid var(--wp-line); }
+#watchparty-root .wp-call { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--wp-text-3); margin-bottom: 8px; }
+#watchparty-root .wp-live { width: 7px; height: 7px; border-radius: 50%; background: var(--wp-ink-4); flex: none; }
+#watchparty-root .wp-call.live { color: #a7e9cf; }
+#watchparty-root .wp-call.live .wp-live { background: var(--wp-live); }
+#watchparty-root .wp-call.wait .wp-live { background: var(--wp-warn); animation: wp-blink 1.1s ease-in-out infinite; }
+#watchparty-root .wp-meet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+#watchparty-root .wp-meet button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--wp-ink-2);
+  border: 1px solid var(--wp-line);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--wp-text-2);
+  transition: background 0.15s, color 0.15s;
+}
+#watchparty-root .wp-meet button:not(:disabled):hover { background: var(--wp-ink-3); color: var(--wp-text); }
+#watchparty-root .wp-meet button.on { background: rgba(52, 211, 153, 0.16); border-color: rgba(52, 211, 153, 0.35); color: #c5f5e2; }
+#watchparty-root .wp-meet button.off { color: #fda4b4; }
+#watchparty-root .wp-meet button.hot { background: var(--wp-danger); border-color: transparent; color: #fff; }
+#watchparty-root .wp-ico { display: grid; place-items: center; }
+
+/* chat */
+#watchparty-root .wp-chat {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 12px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--wp-ink-4) transparent;
+  overscroll-behavior: contain;
+}
+#watchparty-root .wp-chat::-webkit-scrollbar { width: 8px; }
+#watchparty-root .wp-chat::-webkit-scrollbar-thumb { background: var(--wp-ink-4); border-radius: 8px; border: 2px solid var(--wp-ink-1); }
+#watchparty-root .wp-intro {
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--wp-ink-2);
+  border: 1px solid var(--wp-line);
+  margin-bottom: 4px;
+}
+#watchparty-root .wp-intro-title { font-weight: 650; font-size: 14px; margin-bottom: 4px; }
+#watchparty-root .wp-intro p { margin: 0 0 10px; font-size: 12.5px; color: var(--wp-text-2); }
+#watchparty-root .wp-intro-link {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: var(--wp-ink-0);
+  font-size: 12.5px;
+  color: #dcc8ff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#watchparty-root .wp-intro-link:hover { background: var(--wp-ink-3); }
+#watchparty-root .wp-intro-link[data-done]::after { content: "  Copied"; color: var(--wp-live); }
+
+#watchparty-root .wp-msg { display: flex; gap: 8px; align-items: flex-end; max-width: 100%; }
+#watchparty-root .wp-msg > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+#watchparty-root .wp-meta { display: flex; align-items: baseline; gap: 6px; padding: 0 4px; font-size: 11.5px; color: var(--wp-text-3); }
+#watchparty-root .wp-meta b { font-weight: 650; color: var(--wp-text-2); }
+#watchparty-root .wp-meta time { font-size: 11px; font-variant-numeric: tabular-nums; opacity: 0.85; }
+#watchparty-root .wp-crown { font-size: 12px; line-height: 1; }
+#watchparty-root .wp-msg .wp-bubble {
+  display: block;
+  padding: 7px 11px;
+  border-radius: 14px 14px 14px 5px;
+  background: var(--wp-ink-3);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+#watchparty-root .wp-msg.wp-mine { flex-direction: row-reverse; }
+#watchparty-root .wp-msg.wp-mine > div { align-items: flex-end; }
+#watchparty-root .wp-msg.wp-mine .wp-meta { flex-direction: row-reverse; }
+#watchparty-root .wp-msg.wp-mine .wp-bubble {
+  border-radius: 14px 14px 5px 14px;
+  background: linear-gradient(135deg, #6d3fe0, #b8329a);
+  color: #fff;
+}
+#watchparty-root .wp-msg.wp-mine > .wp-face { display: none; }
+#watchparty-root .wp-msg .wp-em { font-size: 1.35em; line-height: 1; vertical-align: -0.12em; }
+#watchparty-root .wp-msg .wp-bubble.wp-jumbo,
+#watchparty-root .wp-msg.wp-mine .wp-bubble.wp-jumbo {
+  background: none;
+  padding: 0 2px;
+  font-size: 34px;
+  line-height: 1.15;
+  letter-spacing: 2px;
+}
+#watchparty-root .wp-msg .wp-bubble.wp-jumbo-1 { font-size: 48px; animation: wp-pop 0.42s var(--wp-ease); }
+#watchparty-root .wp-msg.wp-royal.wp-theirs .wp-bubble:not(.wp-jumbo) { box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.4); }
+#watchparty-root .wp-msg.wp-royal.wp-mine .wp-bubble:not(.wp-jumbo) { background: linear-gradient(135deg, #7c3aed, #db2777 70%, #f59e0b); }
+#watchparty-root .wp-chip .wp-crown { margin-left: -2px; }
+
+/* queen check */
+#watchparty-root .wp-queen {
+  margin-top: 10px;
+  padding: 16px 14px 12px;
+  border-radius: 14px;
+  text-align: center;
+  background: linear-gradient(160deg, rgba(251, 191, 36, 0.16), rgba(236, 72, 153, 0.16));
+  border: 1px solid rgba(251, 191, 36, 0.38);
+}
+#watchparty-root .wp-queen-crown { font-size: 34px; line-height: 1; animation: wp-bob 2.4s ease-in-out infinite; }
+#watchparty-root .wp-queen-title { margin-top: 6px; font-weight: 700; font-size: 14px; color: #fde7b0; }
+#watchparty-root .wp-queen p { margin: 4px 0 12px; font-size: 12.5px; color: var(--wp-text-2); }
+#watchparty-root .wp-queen button { display: block; width: 100%; padding: 9px; border-radius: 10px; font-weight: 650; font-size: 13px; text-align: center; }
+#watchparty-root .wp-queen [data-act="queen"] { background: linear-gradient(135deg, #fbbf24, #f472b6); color: #2a1030; margin-bottom: 4px; }
+#watchparty-root .wp-queen [data-act="queen"]:hover { filter: brightness(1.08); }
+#watchparty-root .wp-queen [data-act="queen-no"] { color: var(--wp-text-3); }
+#watchparty-root .wp-queen [data-act="queen-no"]:hover { color: var(--wp-text); }
+#watchparty-root .wp-msg.wp-sys {
+  display: block;
+  align-self: center;
+  max-width: 92%;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--wp-text-3);
+  padding: 2px 6px;
+}
+#watchparty-root .wp-face { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex: none; display: block; }
+#watchparty-root .wp-face svg { width: 100%; height: 100%; display: block; }
+
+/* voice notes */
+#watchparty-root .wp-voice { max-width: 92%; }
+#watchparty-root .wp-voice audio { display: none; }
+#watchparty-root .wp-clip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 14px;
+  background: var(--wp-ink-3);
+  min-width: 200px;
+}
+#watchparty-root .wp-mine .wp-clip { background: linear-gradient(135deg, #6d3fe0, #b8329a); }
+#watchparty-root .wp-clip-play {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.92);
+  color: #2a1b40;
+  flex: none;
+}
+#watchparty-root .wp-clip-track { position: relative; flex: 1; height: 24px; display: flex; align-items: center; cursor: pointer; }
+#watchparty-root .wp-clip-bars { display: flex; align-items: center; gap: 2px; width: 100%; }
+#watchparty-root .wp-clip-bars i { flex: 1; border-radius: 2px; background: rgba(255, 255, 255, 0.35); }
+#watchparty-root .wp-clip-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-right: 2px solid #fff; pointer-events: none; }
+#watchparty-root .wp-clip-time { font-size: 11px; font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.8); min-width: 30px; text-align: right; }
+
+/* compose */
+#watchparty-root .wp-compose { padding: 6px 12px 12px; border-top: 1px solid var(--wp-line); }
+#watchparty-root .wp-emojis { display: flex; justify-content: space-between; padding: 2px 0 6px; }
+#watchparty-root .wp-love {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  margin: 4px 0 6px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.22), rgba(244, 114, 182, 0.14));
+  border: 1px solid rgba(244, 114, 182, 0.4);
+  color: #ffd1e6;
+  font-weight: 650;
+  font-size: 13px;
+  transition: background 0.15s, transform 0.15s var(--wp-ease);
+}
+#watchparty-root .wp-love:hover { background: linear-gradient(135deg, rgba(236, 72, 153, 0.34), rgba(244, 114, 182, 0.22)); }
+#watchparty-root .wp-love:active { transform: scale(0.97); }
+#watchparty-root .wp-love-heart { font-size: 17px; line-height: 1; display: inline-block; }
+#watchparty-root .wp-love:hover .wp-love-heart { animation: wp-beat 0.9s ease-in-out infinite; }
+#watchparty-root .wp-love.sent .wp-love-heart { animation: wp-beat 0.5s ease-in-out 2; }
+#watchparty-root .wp-emo {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.18s var(--wp-ease), background 0.15s;
+}
+#watchparty-root .wp-emo:hover { background: var(--wp-ink-3); transform: translateY(-2px) scale(1.12); }
+#watchparty-root .wp-emo:active { transform: scale(0.92); }
+#watchparty-root .wp-picker {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+  padding: 6px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  background: var(--wp-ink-0);
+  border: 1px solid var(--wp-line);
+}
+#watchparty-root .wp-input {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--wp-ink-2);
+  border: 1px solid var(--wp-line);
+  transition: border-color 0.15s;
+}
+#watchparty-root .wp-input:focus-within { border-color: rgba(201, 166, 255, 0.5); }
+#watchparty-root .wp-input input {
+  all: unset;
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 6px;
+  font: inherit;
+  color: var(--wp-text);
+  cursor: text;
+}
+#watchparty-root .wp-input input::placeholder { color: var(--wp-text-3); }
+#watchparty-root .wp-input input:focus-visible { outline: none; }
+#watchparty-root .wp-tool {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--wp-text-3);
+  transition: background 0.15s, color 0.15s;
+}
+#watchparty-root .wp-tool:hover { background: var(--wp-ink-3); color: var(--wp-text); }
+#watchparty-root .wp-voice-btn.on { background: var(--wp-danger); color: #fff; animation: wp-blink 1.1s ease-in-out infinite; }
+#watchparty-root .wp-send {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--wp-grad);
+  color: #fff;
+  transition: filter 0.15s, transform 0.15s var(--wp-ease);
+}
+#watchparty-root .wp-send:hover { filter: brightness(1.1); }
+#watchparty-root .wp-send:active { transform: scale(0.94); }
+
+/* collapsed pill + unread + toasts */
+#watchparty-root .wp-pill {
+  display: none;
+  pointer-events: auto;
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(20, 14, 30, 0.88);
+  border: 1px solid var(--wp-line);
+  box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.8);
+  transition: transform 0.2s var(--wp-ease);
+}
+#watchparty-root .wp-pill:hover { transform: translateY(-50%) scale(1.06); }
+#watchparty-root .wp-pill { touch-action: none; cursor: grab; }
+#watchparty-root .wp-pill:active { cursor: grabbing; }
+#watchparty-root .wp-pill.wp-placed { position: fixed; right: auto; transform: none; }
+#watchparty-root .wp-pill.wp-placed:hover { transform: scale(1.06); }
+#watchparty-root .wp-resize { display: none; }
+#watchparty-root.wp-pop .wp-resize {
+  display: block;
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, rgba(201, 166, 255, 0.55) 50%, rgba(201, 166, 255, 0.55) 58%, transparent 58%, transparent 70%, rgba(201, 166, 255, 0.55) 70%, rgba(201, 166, 255, 0.55) 78%, transparent 78%);
+  border-radius: 0 0 14px 0;
+}
+#watchparty-root.wp-pop .wp-panel { position: relative; }
+#watchparty-root.wp-min .wp-pill { display: block; }
+#watchparty-root .wp-pill-mark { width: 34px; height: 34px; border-radius: 10px; }
+#watchparty-root .wp-badge {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--wp-danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--wp-ink-1);
+}
+#watchparty-root .wp-toasts {
+  position: absolute;
+  top: 16px;
+  right: 14px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+#watchparty-root .wp-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 100%;
+  padding: 8px 12px 8px 8px;
+  border-radius: 14px;
+  background: rgba(20, 14, 30, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--wp-line);
+  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.8);
+  animation: wp-toast-in 0.32s var(--wp-ease);
+  transition: opacity 0.25s, transform 0.25s;
+}
+#watchparty-root .wp-toast.out { opacity: 0; transform: translateX(12px); }
+#watchparty-root .wp-toast > span:last-child { display: flex; flex-direction: column; min-width: 0; text-align: left; }
+#watchparty-root .wp-toast b { font-size: 11.5px; font-weight: 650; color: var(--wp-text-2); }
+#watchparty-root .wp-toast span span { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 230px; }
+
+/* reaction bursts: the one signature motion */
+#watchparty-root .wp-float {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: calc(100vw - var(--wp-rail, 0px));
+  height: 92vh;
+  pointer-events: none;
+  overflow: hidden;
+}
+#watchparty-root.wp-infs .wp-float { position: absolute; width: 100%; }
+#watchparty-root .wp-burst {
+  position: absolute;
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  animation: wp-up 2.2s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+#watchparty-root .wp-burst > span:first-child { font-size: 44px; line-height: 1; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.45)); }
+#watchparty-root .wp-burst.wp-mini { bottom: 30px; animation-duration: 2.4s; animation-fill-mode: both; }
+#watchparty-root .wp-burst.wp-mini > span:first-child { font-size: 20px; }
+#watchparty-root .wp-burst.wp-heart { bottom: -40px; animation: wp-rise 3.4s cubic-bezier(0.2, 0.6, 0.3, 1) both; }
+#watchparty-root .wp-love-note {
+  position: absolute;
+  left: 50%;
+  bottom: 30%;
+  transform: translateX(-50%);
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #db2777, #f472b6);
+  color: #fff;
+  font-weight: 700;
+  font-size: 18px;
+  white-space: nowrap;
+  box-shadow: 0 14px 36px -10px rgba(219, 39, 119, 0.8);
+  animation: wp-note 3.6s var(--wp-ease) both;
+}
+#watchparty-root .wp-burst-name {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(12, 8, 18, 0.75);
+  color: #fff;
+}
+
+@keyframes wp-up {
+  0% { opacity: 0; transform: translateY(24px) scale(0.6); }
+  12% { opacity: 1; transform: translateY(0) scale(1.08); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-46vh) scale(0.95) rotate(-6deg); }
+}
+@keyframes wp-blink { 50% { opacity: 0.35; } }
+@keyframes wp-beat { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.3); } 60% { transform: scale(0.95); } }
+@keyframes wp-rise { 0% { opacity: 0; transform: translateY(0) scale(0.5); } 10% { opacity: 1; transform: translateY(-8vh) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-62vh) translateX(18px) rotate(10deg); } }
+@keyframes wp-note { 0% { opacity: 0; transform: translateX(-50%) translateY(16px) scale(0.85); } 12% { opacity: 1; transform: translateX(-50%) scale(1.04); } 20% { transform: translateX(-50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-12px); } }
+@keyframes wp-pop { from { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } to { transform: scale(1); } }
+@keyframes wp-bob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-4px) rotate(4deg); } }
+@keyframes wp-ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(-14deg); } 30% { transform: rotate(12deg); } 45% { transform: rotate(-6deg); } 60% { transform: rotate(0); } }
+@keyframes wp-toast-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  #watchparty-root *,
+  #watchparty-root *::before,
+  #watchparty-root *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  #watchparty-root .wp-burst { animation: wp-fade 1.6s linear forwards !important; }
+  @keyframes wp-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+}
+
+@media (max-width: 900px) {
+  #watchparty-root .wp-panel { width: 320px; }
+}
+
+/* ---------- call tiles & voice badge (layout from 3.x, retuned colors) ---------- */
+#watchparty-cams .wp-self video { transform: scaleX(-1); }
+#watchparty-cams {
+  all: initial;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  font-family: "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+#watchparty-cams .wp-cam {
+  pointer-events: auto;
+  position: fixed;
+  width: 220px;
+  height: 164px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0c0812;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+  border: 2px solid rgba(255,255,255,0.18);
+}
+#watchparty-cams .wp-cam video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+#watchparty-cams .wp-cam-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.72), transparent);
+  color: #fff;
+  cursor: grab;
+  touch-action: none;
+  font-size: 11px;
+  font-weight: 700;
+}
+#watchparty-cams .wp-cam-bar span { flex: 1; text-shadow: 0 1px 2px #000; }
+#watchparty-cams .wp-cam-bar button {
+  border: 0;
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  border-radius: 6px;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+#watchparty-cams .wp-cam-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.85) 50%);
+}
+#watchparty-cams .wp-cam-min {
+  width: 84px !important;
+  height: 84px !important;
+  border-radius: 999px;
+}
+#watchparty-cams .wp-cam-min .wp-cam-resize,
+#watchparty-cams .wp-cam-min video { border-radius: 999px; }
+#watchparty-cams .wp-cam-min .wp-cam-bar button:not([data-hide]) { display: none; }
+#watchparty-cams .wp-cam-pip { display: none; }
+#watchparty-cams .wp-cam-bubble {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 999px;
+  cursor: grab;
+  touch-action: none;
+  display: grid;
+  place-items: center;
+}
+#watchparty-cams .wp-cam-bubble:active { cursor: grabbing; }
+#watchparty-cams .wp-cam-bubble video,
+#watchparty-cams .wp-cam-bubble .wp-cam-bar,
+#watchparty-cams .wp-cam-bubble .wp-cam-resize { display: none; }
+#watchparty-cams .wp-cam-bubble .wp-cam-pip {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+#watchparty-cams .wp-cam-bubble .wp-face { width: 56px; height: 56px; }
+#watchparty-voice {
+  all: initial;
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 2147483645;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(20, 14, 30, 0.92);
+  color: #fff;
+  font: 700 13px/1.2 "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+#watchparty-voice:active { cursor: grabbing; }
+#watchparty-voice.hidden { display: none; }
+#watchparty-voice .wp-mic-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f5c451;
+  flex: none;
+}
+#watchparty-voice.live .wp-mic-dot {
+  background: #34d399;
+  box-shadow: 0 0 0 0 rgba(52,211,153,0.7);
+  animation: wp-pulse 1.4s infinite;
+}
+@keyframes wp-pulse {
+  70% { box-shadow: 0 0 0 8px rgba(52,211,153,0); }
+  100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); }
+}
+#watchparty-cams .wp-cam-bar .wp-face { width: 16px; height: 16px; }
+
+/* avatar sizing for camera tiles (restored) */
+#watchparty-cams .wp-face { display: inline-block; width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex: none; vertical-align: middle; }
+#watchparty-cams .wp-face svg { width: 100%; height: 100%; display: block; }
+#watchparty-cams .wp-cam-bar .wp-face { width: 16px; height: 16px; }
+#watchparty-cams .wp-cam-bubble .wp-face { width: 56px; height: 56px; }
+
+/* "Join this party?" prompt for party links */
+#watchparty-invite {
+  all: initial;
+  position: fixed;
+  z-index: 2147483647;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 4px 8px;
+  align-items: center;
+  width: min(460px, calc(100vw - 32px));
+  padding: 14px 14px 14px 16px;
+  border-radius: 16px;
+  background: #140e1e;
+  border: 1px solid rgba(205, 180, 255, 0.2);
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.8);
+  color: #f4effc;
+  font: 400 13.5px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+#watchparty-invite b { grid-column: 1; font-weight: 650; font-size: 14px; }
+#watchparty-invite span { grid-column: 1; grid-row: 2; color: #bdb2d3; font-size: 12.5px; }
+#watchparty-invite button {
+  all: unset;
+  grid-row: 1 / span 2;
+  padding: 9px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font: 650 13px/1 ui-sans-serif, system-ui, sans-serif;
+  background: linear-gradient(135deg, #8b5cf6, #d946ef 55%, #ec4899);
+  color: #fff;
+  white-space: nowrap;
+}
+#watchparty-invite button.no { background: #281d39; color: #bdb2d3; }
+#watchparty-invite button:focus-visible { outline: 2px solid #c9a6ff; outline-offset: 2px; }
+
+#watchparty-root .wp-lock { font-size: 11px; margin-right: -2px; }

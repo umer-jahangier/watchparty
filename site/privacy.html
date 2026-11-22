@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WatchParty Privacy Policy</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src 'self'; base-uri 'none'; form-action 'none'" />
+  <style>
+    @font-face { font-family: "Bricolage"; src: url("fonts/bricolage.woff2") format("woff2"); font-weight: 500 800; }
+    body { margin: 0; background: #0c0812; color: #e9e2f6; font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+    main { width: min(820px, 100% - 40px); margin: 0 auto; padding: 48px 0 72px; }
+    a { color: #dcc8ff; text-underline-offset: 3px; }
+    h1 { font: 800 40px/1.05 "Bricolage", system-ui, sans-serif; letter-spacing: -0.03em; margin: 0 0 6px; color: #f4effc; }
+    h2 { font: 700 22px/1.2 "Bricolage", system-ui, sans-serif; margin: 36px 0 10px; color: #f4effc; }
+    p, li { max-width: 70ch; }
+    code { background: #281d39; padding: 1px 6px; border-radius: 6px; font-size: 0.9em; }
+    .t { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+    th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid rgba(205,180,255,.14); }
+    th { color: #9a8fb2; font-weight: 600; }
+    .back { display: inline-block; margin-bottom: 28px; color: #9a8fb2; text-decoration: none; }
+  </style>
+</head>
+<body><main>
+<a class="back" href="./">← WatchParty</a>
+<h1>WatchParty Privacy Policy</h1>
+<p><i>Last updated: 22 November 2026</i></p>
+<p>WatchParty is free, open-source software by Umer Jahangier. It has no ads, no analytics and no tracking, and it never sells or shares data.</p>
+<h2>What WatchParty handles, and why</h2>
+<div class="t"><table><thead><tr><th>Data</th><th>Why</th><th>Where it goes</th><th>Kept</th></tr></thead><tbody><tr><td>Display name and avatar you choose</td><td>So friends see who is who</td><td>Your browser storage; sent to the party relay while you are in a party</td><td>Relay: only while the party is live</td></tr><tr><td>Chat messages, voice notes, reactions, &quot;love&quot;</td><td>The party features</td><td>Encrypted parties (full codes like <code>K7Q2MX-9F4TB-2W8QH</code>): end-to-end encrypted in your browser; the relay only forwards ciphertext it cannot read</td><td>Never stored; forwarded in memory only</td></tr><tr><td>Video page address, play/pause position and speed</td><td>To keep everyone in sync and let guests open the same video</td><td>Party relay (<code>cp.praivox.com</code>)</td><td>Only while the party is live</td></tr><tr><td>Voice/video calls (only if you start or join one)</td><td>Calling</td><td>Peer-to-peer WebRTC, encrypted end-to-end (DTLS-SRTP). If a direct connection is not possible, the encrypted media passes through the WatchParty TURN relay, which cannot decrypt it</td><td>Never recorded or stored</td></tr><tr><td>IP address</td><td>Required to connect; used for abuse limits (connections and new parties per address)</td><td>Relay memory; standard web server logs on <code>cp.praivox.com</code></td><td>Rate-limit counters: minutes; server logs: rotated</td></tr></tbody></table></div>
+<h2>What stays on your device</h2>
+<ul><li>Your name, avatar, the optional &quot;queen&quot; crown and your settings (browser storage).</li><li>Party codes and keys for the current tab (extension-only session storage, cleared when the tab closes).</li></ul>
+<h2>Optional permissions</h2>
+<p><b>VPN-friendly mode</b> is off by default. If you turn it on, WatchParty asks for permission to *read* your browser&#x27;s proxy and WebRTC settings, only to tell whether a VPN or proxy extension is active. It never changes them and never sends them anywhere. Turning the mode off removes the permission.</p>
+<h2>Microphone and camera</h2>
+<p>Used only when you record a voice note, turn on your mic, or turn on your camera, and only after your browser asks you.</p>
+<h2>Children</h2>
+<p>WatchParty is not directed at children under 13.</p>
+<h2>Contact</h2>
+<p>Questions or requests: open an issue at <a href="https://github.com/umer-jahangier/watchparty/issues">https://github.com/umer-jahangier/watchparty/issues</a> or email <a href="mailto:umer.jahangier@gmail.com.">umer.jahangier@gmail.com.</a></p>
+</main></body></html>

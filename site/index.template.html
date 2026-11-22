@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WatchParty {{VERSION}}: watch together, anywhere</title>
+  <meta name="description" content="Watch videos together, in sync, from different homes. Chat, react, send love and call each other right beside the video." />
+  <meta name="theme-color" content="#0c0812" />
+  <meta name="author" content="Umer Jahangier" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <link rel="preload" href="fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin />
+  <style>
+    @font-face {
+      font-family: "Bricolage";
+      src: url("fonts/bricolage.woff2") format("woff2");
+      font-weight: 500 800;
+      font-display: swap;
+    }
+    :root {
+      color-scheme: dark;
+      --ink-0: #0c0812; --ink-1: #140e1e; --ink-2: #1c1429; --ink-3: #281d39; --ink-4: #34274a;
+      --line: rgba(205, 180, 255, 0.12);
+      --text: #f4effc; --text-2: #c4b9d9; --text-3: #9a8fb2;
+      --violet: #8b5cf6; --pink: #ec4899; --gold: #fbbf24; --live: #34d399;
+      --grad: linear-gradient(135deg, #8b5cf6 0%, #d946ef 55%, #ec4899 100%);
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+      --display: "Bricolage", ui-sans-serif, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      font: 400 17px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(1200px 700px at 78% -10%, rgba(139, 92, 246, 0.22), transparent 60%),
+        radial-gradient(900px 600px at 0% 30%, rgba(236, 72, 153, 0.10), transparent 60%),
+        var(--ink-0);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+    ::selection { background: rgba(139, 92, 246, 0.55); color: #fff; }
+    a { color: #dcc8ff; text-underline-offset: 3px; }
+    a:focus-visible, button:focus-visible { outline: 2px solid #c9a6ff; outline-offset: 3px; border-radius: 8px; }
+    .wrap { width: min(1140px, 100% - 40px); margin-inline: auto; }
+
+    /* nav */
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+    .brand { display: flex; align-items: center; gap: 10px; font: 700 19px/1 var(--display); letter-spacing: -0.01em; color: var(--text); text-decoration: none; }
+    .mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--grad); box-shadow: 0 10px 24px -10px rgba(217, 70, 239, 0.9); }
+    .navlinks { display: flex; gap: 22px; font-size: 15px; }
+    .navlinks a { color: var(--text-2); text-decoration: none; }
+    .navlinks a:hover { color: var(--text); }
+
+    /* hero */
+    .hero { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 56px; align-items: center; padding: 48px 0 96px; }
+    h1 { font: 800 clamp(44px, 6.2vw, 78px)/0.98 var(--display); letter-spacing: -0.035em; margin: 0 0 22px; text-wrap: balance; }
+    h1 em { font-style: normal; color: #f9a8d4; }
+    .lead { font-size: 19px; color: var(--text-2); margin: 0 0 32px; max-width: 34ch; }
+    .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 16px 24px; border-radius: 14px;
+      background: var(--grad); color: #fff; text-decoration: none;
+      font: 700 17px/1 var(--display); letter-spacing: -0.005em;
+      box-shadow: 0 18px 40px -16px rgba(217, 70, 239, 0.9);
+      transition: transform 0.2s var(--ease), filter 0.2s;
+    }
+    .btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    .btn:active { transform: translateY(0) scale(0.98); }
+    .meta { font-size: 14px; color: var(--text-3); line-height: 1.45; }
+    .meta b { color: var(--text-2); font-weight: 600; }
+    .alt { margin: 22px 0 0; font-size: 15px; color: var(--text-3); }
+    .alt a { color: #f9a8d4; font-weight: 600; }
+    .ways { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .way { display: flex; flex-direction: column; gap: 10px; padding: 26px; border-radius: 20px; background: var(--ink-1); border: 1px solid var(--line); }
+    .way h3 { font: 700 21px/1.2 var(--display); letter-spacing: -0.015em; margin: 0; }
+    .way p { margin: 0; color: var(--text-2); font-size: 16px; flex: 1; }
+    .way .who { font-size: 13px; color: var(--text-3); }
+    .way a.go { align-self: flex-start; margin-top: 6px; padding: 11px 16px; border-radius: 11px; background: var(--ink-3); color: var(--text); text-decoration: none; font-weight: 650; font-size: 15px; }
+    .way a.go:hover { background: var(--ink-4); }
+    .way.web { background: linear-gradient(150deg, rgba(236, 72, 153, 0.18), rgba(139, 92, 246, 0.12)), var(--ink-1); border-color: rgba(244, 114, 182, 0.3); }
+    .way.web a.go { background: var(--grad); }
+    @media (max-width: 960px) { .ways { grid-template-columns: 1fr; } }
+
+    /* product preview (built from the real panel's look) */
+    .stage { position: relative; }
+    .screen {
+      position: relative; display: grid; grid-template-columns: 1fr 236px;
+      border-radius: 20px; overflow: hidden; border: 1px solid var(--line);
+      background: var(--ink-1);
+      box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+      aspect-ratio: 16 / 10;
+    }
+    .film {
+      position: relative; overflow: hidden;
+      background:
+        radial-gradient(60% 50% at 70% 35%, rgba(251, 191, 36, 0.55), transparent 60%),
+        radial-gradient(70% 60% at 30% 80%, rgba(236, 72, 153, 0.45), transparent 65%),
+        linear-gradient(170deg, #2a1650 0%, #4a1d5e 45%, #1a0f2b 100%);
+    }
+    .film::before { /* skyline silhouette */
+      content: ""; position: absolute; inset: auto 0 0 0; height: 38%;
+      background:
+        linear-gradient(to top, #0f0918 0 30%, transparent 30%),
+        repeating-linear-gradient(90deg, #120a1d 0 22px, #170d24 22px 40px, #0f0918 40px 58px, transparent 58px 66px);
+      -webkit-mask: linear-gradient(to top, #000 55%, transparent 100%);
+      mask: linear-gradient(to top, #000 55%, transparent 100%);
+      clip-path: polygon(0 40%, 8% 40%, 8% 18%, 15% 18%, 15% 52%, 24% 52%, 24% 8%, 31% 8%, 31% 44%, 42% 44%, 42% 26%, 50% 26%, 50% 60%, 61% 60%, 61% 14%, 70% 14%, 70% 48%, 80% 48%, 80% 30%, 88% 30%, 88% 56%, 100% 56%, 100% 100%, 0 100%);
+    }
+    .sun { position: absolute; width: 18%; aspect-ratio: 1; border-radius: 50%; left: 58%; top: 22%; background: radial-gradient(circle, #ffe4a8 0%, #fbbf24 45%, rgba(251, 191, 36, 0) 72%); }
+    .controls { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 16px 12px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.75)); display: grid; gap: 8px; }
+    .track { height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+    .track i { display: block; width: 38%; height: 100%; background: #fff; border-radius: 4px; }
+    .ctl .ci { display: inline-flex; align-items: center; gap: 6px; }
+    .ctl { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: rgba(255, 255, 255, 0.85); font-variant-numeric: tabular-nums; }
+    .synced { position: absolute; top: 14px; left: 14px; display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 999px; background: rgba(12, 8, 18, 0.7); backdrop-filter: blur(8px); font-size: 12px; color: #c5f5e2; }
+    .synced i { width: 7px; height: 7px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2); }
+
+    .panel { border-left: 1px solid var(--line); display: flex; flex-direction: column; min-width: 0; font-size: 12px; }
+    .p-head { display: flex; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid var(--line); }
+    .p-head .mark { width: 24px; height: 24px; border-radius: 7px; box-shadow: none; }
+    .p-head b { font-weight: 650; font-size: 12.5px; }
+    .p-head small { display: block; color: #a7e9cf; font-size: 10.5px; }
+    .p-code { margin-left: auto; padding: 4px 7px; border-radius: 7px; background: var(--ink-3); font-weight: 700; letter-spacing: 0.06em; font-size: 11px; }
+    .p-people { display: flex; gap: 5px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+    .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 3px; border-radius: 999px; background: var(--ink-2); font-size: 11px; color: var(--text-2); }
+    .av { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font: 700 10px/1 var(--display); color: #1a0f2b; }
+    .av.fox { background: #f0883e; } .av.cat { background: #a78bfa; }
+    .p-chat { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 7px; overflow: hidden; }
+    .m { display: flex; flex-direction: column; gap: 2px; max-width: 88%; }
+    .m small { color: var(--text-3); font-size: 10px; }
+    .m span { padding: 6px 9px; border-radius: 11px 11px 11px 4px; background: var(--ink-3); line-height: 1.35; }
+    .m.me { align-self: flex-end; align-items: flex-end; }
+    .m.me span { border-radius: 11px 11px 4px 11px; background: linear-gradient(135deg, #6d3fe0, #b8329a); }
+    .m.queen span { box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.45); }
+    .m .jumbo { background: none !important; box-shadow: none !important; font-size: 28px; padding: 0; }
+    .sys { align-self: center; color: var(--text-3); font-size: 10.5px; }
+    .p-love { margin: 0 10px 10px; padding: 7px; border-radius: 10px; text-align: center; font-weight: 650; color: #ffd1e6; background: linear-gradient(135deg, rgba(236, 72, 153, 0.24), rgba(244, 114, 182, 0.14)); border: 1px solid rgba(244, 114, 182, 0.4); }
+
+    .hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: 20px; }
+    .hearts span { position: absolute; bottom: -40px; font-size: 26px; opacity: 0; animation: rise 5.5s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
+    .hearts span:nth-child(1) { left: 12%; animation-delay: 0s; }
+    .hearts span:nth-child(2) { left: 26%; animation-delay: 1.1s; font-size: 20px; }
+    .hearts span:nth-child(3) { left: 41%; animation-delay: 2.3s; font-size: 32px; }
+    .hearts span:nth-child(4) { left: 55%; animation-delay: 0.6s; font-size: 18px; }
+    .hearts span:nth-child(5) { left: 33%; animation-delay: 3.4s; }
+    .hearts span:nth-child(6) { left: 62%; animation-delay: 4.1s; font-size: 22px; }
+    @keyframes rise {
+      0% { opacity: 0; transform: translateY(0) scale(0.6); }
+      12% { opacity: 1; transform: translateY(-40px) scale(1); }
+      70% { opacity: 0.9; }
+      100% { opacity: 0; transform: translateY(-420px) translateX(24px) rotate(12deg); }
+    }
+
+    /* sections */
+    section { padding: 88px 0; border-top: 1px solid var(--line); }
+    h2 { font: 750 clamp(32px, 4vw, 48px)/1.05 var(--display); letter-spacing: -0.03em; margin: 0 0 14px; text-wrap: balance; }
+    .sub { color: var(--text-2); max-width: 56ch; margin: 0 0 48px; font-size: 18px; }
+
+    .features { display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px; }
+    .f { padding: 26px; border-radius: 20px; background: var(--ink-1); border: 1px solid var(--line); }
+    .f h3 { font: 700 21px/1.2 var(--display); letter-spacing: -0.015em; margin: 0 0 8px; }
+    .f p { margin: 0; color: var(--text-2); font-size: 16px; }
+    .f.wide { grid-column: span 4; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; }
+    .f.mid { grid-column: span 2; }
+    .f.half { grid-column: span 3; }
+    .f.love { background: linear-gradient(150deg, rgba(219, 39, 119, 0.22), rgba(139, 92, 246, 0.12)), var(--ink-1); border-color: rgba(244, 114, 182, 0.3); }
+    .f.queen { background: linear-gradient(150deg, rgba(251, 191, 36, 0.16), rgba(236, 72, 153, 0.12)), var(--ink-1); border-color: rgba(251, 191, 36, 0.3); }
+    .demo { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: var(--ink-3); font-size: 14px; color: var(--text-2); }
+    .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--live); }
+    .pill.warn i { background: var(--gold); }
+    .emo { font-size: 26px; display: flex; gap: 10px; margin-top: 16px; }
+    .emo span { transition: transform 0.25s var(--ease); display: inline-block; }
+    .emo span:hover { transform: translateY(-4px) scale(1.2); }
+    .crown { font-size: 44px; line-height: 1; display: inline-block; animation: bob 2.6s ease-in-out infinite; margin-bottom: 8px; }
+    @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-5deg); } 50% { transform: translateY(-5px) rotate(5deg); } }
+    .sync-demo { border-radius: 14px; background: var(--ink-0); border: 1px solid var(--line); padding: 16px; display: grid; gap: 10px; font-size: 14px; }
+    .row { display: grid; grid-template-columns: 64px 1fr 48px; gap: 10px; align-items: center; color: var(--text-2); }
+    .row .t { height: 6px; border-radius: 6px; background: var(--ink-3); overflow: hidden; }
+    .row .t i { display: block; height: 100%; width: 0; background: var(--grad); animation: play 6s linear infinite; }
+    .row b { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text); text-align: right; }
+    @keyframes play { from { width: 8%; } to { width: 92%; } }
+
+    /* install */
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; counter-reset: s; padding: 0; margin: 0; list-style: none; }
+    .steps li { position: relative; padding: 24px 22px 22px; border-radius: 18px; background: var(--ink-1); border: 1px solid var(--line); counter-increment: s; color: var(--text-2); font-size: 16px; }
+    .steps li::before { content: counter(s); display: grid; place-items: center; width: 32px; height: 32px; margin-bottom: 14px; border-radius: 10px; background: var(--ink-3); color: var(--text); font: 700 16px/1 var(--display); }
+    .steps b { color: var(--text); }
+    code { font: 500 0.9em/1 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--ink-3); color: #e9ddff; padding: 3px 7px; border-radius: 6px; }
+    .after { margin-top: 22px; display: flex; gap: 14px; align-items: center; padding: 18px 20px; border-radius: 16px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.16), rgba(236, 72, 153, 0.12)); border: 1px solid rgba(236, 72, 153, 0.3); color: var(--text-2); }
+    .badge { flex: none; padding: 4px 8px; border-radius: 7px; background: #db2777; color: #fff; font: 700 12px/1 var(--display); letter-spacing: 0.04em; }
+
+    /* changelog */
+    .log { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; max-width: 760px; }
+    .log li { display: grid; grid-template-columns: 72px 1fr; gap: 18px; padding: 18px 0; border-bottom: 1px solid var(--line); color: var(--text-2); }
+    .log li:first-child { padding-top: 0; }
+    .log b { font: 700 18px/1.3 var(--display); color: var(--text); }
+    .log .now { color: #f9a8d4; }
+
+    footer { padding: 40px 0 56px; color: var(--text-3); font-size: 14px; display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; border-top: 1px solid var(--line); }
+
+    @media (max-width: 960px) {
+      .hero { grid-template-columns: 1fr; gap: 40px; padding-top: 24px; }
+      .features { grid-template-columns: 1fr 1fr; }
+      .f.wide, .f.mid, .f.half { grid-column: span 2; }
+      .f.wide { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 560px) {
+      body { font-size: 16px; }
+      .navlinks { display: none; }
+      .screen { grid-template-columns: 1fr; aspect-ratio: auto; }
+      .film { aspect-ratio: 16 / 9; }
+      .panel { border-left: 0; border-top: 1px solid var(--line); }
+      .features, .steps { grid-template-columns: 1fr; }
+      .f.wide, .f.mid, .f.half { grid-column: span 1; }
+      section { padding: 64px 0; }
+      .log li { grid-template-columns: 1fr; gap: 4px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .hearts span { opacity: 0.8; bottom: 20%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a class="brand" href="./"><span class="mark"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="#fff"/></svg></span>WatchParty</a>
+      <div class="navlinks"><a href="#features">Features</a><a href="#anywhere">Any device</a><a href="#install">Install</a><a href="web/">Open in browser</a></div>
+    </nav>
+
+    <header class="hero">
+      <div>
+        <h1>Movie night, together. <em>Even from far away.</em></h1>
+        <p class="lead">Play, pause and skip in perfect sync, with chat, reactions, voice notes and calls right beside the video.</p>
+        <div class="cta">
+          <a class="btn" href="WatchParty.zip" download="WatchParty.zip">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+            Download WatchParty
+          </a>
+          <span class="meta"><b>Version {{VERSION}}</b><br />Chrome, Edge, Brave, Opera</span>
+        </div>
+        <p class="alt">On a phone or another browser? <a href="web/">Watch in your browser, no install →</a></p>
+      </div>
+
+      <div class="stage" aria-label="Preview of WatchParty beside a video">
+        <div class="screen">
+          <div class="film">
+            <span class="sun"></span>
+            <span class="synced"><i></i>In sync with 2 people</span>
+            <div class="controls">
+              <div class="track"><i></i></div>
+              <div class="ctl"><span class="ci"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>41:07 / 1:48:20</span><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></div>
+            </div>
+          </div>
+          <div class="panel" aria-hidden="true">
+            <div class="p-head"><span class="mark"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M8 5.5v13l10.5-6.5z" fill="#fff"/></svg></span><div><b>WatchParty</b><small>● Live</small></div><span class="p-code">6VBY2S</span></div>
+            <div class="p-people"><span class="chip"><span class="av cat">W</span>Wifey 👑</span><span class="chip"><span class="av fox">U</span>You</span></div>
+            <div class="p-chat">
+              <span class="sys">Wifey paused at 41:02</span>
+              <div class="m queen"><small>Wifey 👑 · 9:41 PM</small><span>wait, is he the dad?? 😭</span></div>
+              <div class="m me"><small>You · 9:41 PM</small><span>don't say it out loud 😂</span></div>
+              <div class="m queen"><small>Wifey 👑 · 9:42 PM</small><span class="jumbo">🥰</span></div>
+              <span class="sys">You sent love 💖</span>
+            </div>
+            <div class="p-love">💖 Send love</div>
+          </div>
+        </div>
+        <div class="hearts" aria-hidden="true"><span>💖</span><span>💕</span><span>💗</span><span>💖</span><span>💞</span><span>💕</span></div>
+      </div>
+    </header>
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <h2>Feels like the same couch</h2>
+      <p class="sub">WatchParty sits next to the video on YouTube and most sites that play video in Chrome. One person hosts, everyone else follows along.</p>
+      <div class="features">
+        <div class="f wide">
+          <div>
+            <h3>Always in sync</h3>
+            <p>Play, pause, skip or change speed and everyone follows. If someone's internet stutters, the party reconnects by itself, and guests follow the host to the next episode.</p>
+            <div class="demo"><span class="pill"><i></i>Live</span><span class="pill warn"><i></i>Reconnecting…</span></div>
+          </div>
+          <div class="sync-demo" aria-hidden="true">
+            <div class="row"><span>You</span><span class="t"><i></i></span><b>41:07</b></div>
+            <div class="row"><span>Wifey</span><span class="t"><i></i></span><b>41:07</b></div>
+          </div>
+        </div>
+        <div class="f mid love">
+          <h3>Send love</h3>
+          <p>One tap fills their screen with hearts.</p>
+          <div class="emo" aria-hidden="true"><span>💖</span><span>💕</span><span>💗</span></div>
+        </div>
+        <div class="f mid queen">
+          <span class="crown" aria-hidden="true">👑</span>
+          <h3>Fit for a queen</h3>
+          <p>She gets a crown by her name, and the royal mirror is hers alone.</p>
+        </div>
+        <div class="f mid">
+          <h3>Chat and react</h3>
+          <p>Messages with names and times, big emojis, and reactions that float over the movie.</p>
+          <div class="emo" aria-hidden="true"><span>😂</span><span>🥰</span><span>🔥</span><span>🍿</span></div>
+        </div>
+        <div class="f mid">
+          <h3>Talk or call</h3>
+          <p>Voice notes up to 20 seconds, or a live voice and video call while you watch.</p>
+        </div>
+        <div class="f half">
+          <h3>Fullscreen with chat</h3>
+          <p>Go fullscreen and keep the party beside the video. In the site's own fullscreen, messages pop up in the corner.</p>
+        </div>
+        <div class="f half">
+          <h3>Updates itself</h3>
+          <p>When a new version is out, the WatchParty button shows <span class="badge" style="display:inline-block">NEW</span>. One click and you're up to date.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="anywhere">
+    <div class="wrap">
+      <h2>Every browser, every device</h2>
+      <p class="sub">Pick what fits. Everyone can be in the same party: the extension and the browser version talk to each other.</p>
+      <div class="ways">
+        <div class="way">
+          <span class="who">Chrome · Edge · Brave · Opera · Arc</span>
+          <h3>Browser extension</h3>
+          <p>The full WatchParty beside any video site, including streaming sites, with calls and one-click updates.</p>
+          <a class="go" href="WatchParty.zip" download="WatchParty.zip">Download for Chromium browsers</a>
+        </div>
+        <div class="way">
+          <span class="who">Firefox on desktop</span>
+          <h3>Firefox add-on</h3>
+          <p>The same extension for Firefox 128 and newer, signed by Mozilla. Open this page in Firefox, click install, and Firefox keeps it up to date by itself.</p>
+          <a class="go" href="firefox/WatchParty.xpi">Install for Firefox</a>
+        </div>
+        <div class="way web">
+          <span class="who">iPhone · Android · any browser</span>
+          <h3>WatchParty Web</h3>
+          <p>No install at all. Paste a YouTube or video link, share the room, and watch together, even on a phone. Invite links open here automatically when someone doesn't have the extension.</p>
+          <a class="go" href="web/">Open WatchParty Web</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <h2>Install the extension in about a minute</h2>
+      <p class="sub">For Chrome, Edge, Brave and Opera. WatchParty isn't in a browser store, so it installs in Developer mode. You only do this once. Edge calls it "Developer mode" too; in Opera it's at <code>opera://extensions</code>.</p>
+      <ol class="steps">
+        <li><b>Download</b> <code>WatchParty.zip</code> and open it. You'll get a <b>WatchParty</b> folder in Downloads. Leave it there.</li>
+        <li>Go to <code>chrome://extensions</code> and turn on <b>Developer mode</b> (top right).</li>
+        <li>Click <b>Load unpacked</b> and choose <code>Downloads/WatchParty</code>. Remove any older WatchParty first.</li>
+        <li>Open a video, click the WatchParty button and <b>start a party</b>. Send the code to your people.</li>
+      </ol>
+      <div class="after"><span class="badge">NEW</span><span>Already installed? You don't need this page. When an update is ready, the WatchParty button shows this badge. Open it and click <b>Update now</b>.</span></div>
+    </div>
+  </section>
+
+  <section id="new">
+    <div class="wrap">
+      <h2>What's new</h2>
+      <ul class="log">
+        <li><b class="now">4.6</b><span><b>End-to-end encryption</b> for chat, voice notes, reactions and love: only people with the full party code (like K7Q2MX-9F4TB-2W8QH) or the invite link can read them, not even the server. Calls were already end-to-end encrypted. Plus <b>VPN-friendly mode</b>: WatchParty notices a VPN, keeps the party connected and routes calls through an encrypted relay.</span></li>
+        <li><b>4.5</b><span>Security update: signed updates, safer party links, calls only from people in your party, stronger server protections, plus a resizable float chat and a draggable button.</span></li>
+        <li><b>4.4</b><span><b>WatchParty Web</b> for phones and any browser, a Firefox build, and support for Edge, Brave and Opera. Invite links now open in the browser for anyone without the extension.</span></li>
+        <li><b>4.3</b><span>A <b>Send love</b> button that showers their screen with hearts 💖. Tap the party code at the top to copy the invite link.</span></li>
+        <li><b>4.2</b><span>One-click updates from the WatchParty button.</span></li>
+        <li><b>4.1</b><span>The queen check is back 👑, bigger emojis, names and times on every message, "paused at 41:02", heart showers.</span></li>
+        <li><b>4.0</b><span>Parties no longer end by themselves, YouTube fullscreen keeps its controls, Fullscreen with chat, and a fresh design.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <footer>
+      <span>WatchParty {{VERSION}} · Built with love for movie nights by <a href="https://umer-jahangier.github.io" rel="author">Umer Jahangier</a> · <a href="https://github.com/umer-jahangier">GitHub</a></span>
+    </footer>
+  </div>
+</body>
+</html>
