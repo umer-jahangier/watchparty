@@ -51,6 +51,7 @@
     pop: SVG('<rect x="3" y="5" width="18" height="14" rx="2.5"/><rect x="12" y="11" width="7" height="6" rx="1.2" fill="currentColor" stroke="none"/>'),
     video: SVG('<rect x="3" y="6.5" width="12.5" height="11" rx="2.5"/><path d="m15.5 10.5 5.5-3v9l-5.5-3z"/>'),
     user: SVG('<circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c1.2-3.6 4-5 7-5s5.8 1.4 7 5"/>'),
+    pencil: SVG('<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m14.5 7.5 3 3"/>'),
     smile: SVG('<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.2c.9 1.3 2.1 2 3.5 2s2.6-.7 3.5-2M9.2 9.6h.01M14.8 9.6h.01"/>'),
     mic: SVG('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3"/>'),
     cam: SVG('<rect x="3" y="6.5" width="12.5" height="11" rx="2.5"/><path d="m15.5 10.5 5.5-3v9l-5.5-3z"/>'),
@@ -78,7 +79,7 @@
   function safeSet(obj) {
     if (!extAlive()) return;
     try {
-      safeSet(obj);
+      Promise.resolve(chrome.storage.local.set(obj)).catch(() => {});
     } catch {
       /* context gone */
     }
@@ -139,6 +140,37 @@
   }
   const peerOf = (t) => tokPeer.get(t);
   const QUICK = ["😂", "❤️", "🥰", "🔥", "👏", "😮", "😭", "🎉", "🍿", "👑"];
+  // Emojis offered when customizing quick reactions (any other emoji can be typed or pasted too).
+  const EMOJI_SETS = [
+    ["Faces", "😀 😁 😂 🤣 😊 😇 🙂 😉 😍 🥰 😘 😋 😜 🤪 😎 🤩 🥳 😏 😅 😬 🙄 😮 😲 😱 🤯 😳 🥺 😢 😭 😤 😡 🤬 🤔 🤫 🤭 😴 🤤 🤮 💀 👻 🤡 😈 🫠 🫣 🫢 🥹 😶 🫡"],
+    ["Love", "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🩷 💖 💕 💞 💓 💗 💘 💝 💌 💋 😻 🌹 💐 💍 🫶 👑"],
+    ["Hands", "👏 🙌 👍 👎 👌 🤌 🤞 ✌️ 🤟 🤘 👊 🙏 💪 🫡 👀 🤝 👋 🫰"],
+    ["Fun", "🔥 ✨ 🎉 🎊 💯 ⭐ 🌟 💫 ⚡ 💥 🍿 🎬 🎮 🎵 🎶 🏆 🥇 🎯 💎 🚀 🌈 ☀️ 🌙 ❄️"],
+    ["Animals & food", "🐶 🐱 🐻 🐼 🦊 🐰 🐨 🐯 🦁 🐸 🐵 🦄 🐝 🦋 🐢 🐙 🍕 🍔 🍟 🍩 🍪 🍫 🍦 ☕ 🧋 🍷 🍻 🍓 🍉 🥑"],
+  ].map(([label, list]) => [label, list.split(" ")]);
+  // One real emoji (flags, keycaps, skin tones and ZWJ sequences included), nothing else.
+  function isEmoji(value) {
+    if (typeof value !== "string" || !value || value.length > 16) return false;
+    if (!/^[\p{Extended_Pictographic}\p{Emoji_Component}\u200d\ufe0f\u20e3]+$/u.test(value)) return false;
+    if (!/[\p{Extended_Pictographic}\p{Regional_Indicator}\u20e3]/u.test(value)) return false;
+    try {
+      return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(value)].length === 1;
+    } catch {
+      return true;
+    }
+  }
+  function firstEmoji(text) {
+    try {
+      for (const { segment } of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(String(text || ""))) {
+        if (isEmoji(segment)) return segment;
+      }
+    } catch {
+      /* ignore */
+    }
+    return "";
+  }
+  let quick = QUICK.slice();
+  let quickSlot = -1; // slot being customized, -1 when not editing
   const CHAT_EMOJIS = ["😀", "😁", "😂", "🤣", "😊", "😍", "😘", "😎", "🤩", "😅", "😢", "😭", "😡", "👍", "👎", "🙏", "👏", "🔥", "❤️", "💯", "🎉", "🍿", "🎬", "💀", "😮", "🤔", "😴", "🤝", "✨", "💜", "🥰", "👑", "🥺", "😻", "💕", "🌸"];
   let voiceRec = null;
   let voiceChunks = [];
@@ -1287,7 +1319,16 @@
           <button type="button" class="wp-love" aria-label="Send love" title="Send love">
             <span class="wp-love-heart" aria-hidden="true">💖</span><span>Send love</span>
           </button>
-          <div class="wp-emojis">${QUICK.map((_, i) => `<button type="button" class="wp-emo" data-react="${i}" title="React on the video"></button>`).join("")}</div>
+          <div class="wp-emojis">${QUICK.map((_, i) => `<button type="button" class="wp-emo" data-react="${i}" title="React on the video"></button>`).join("")}<button type="button" class="wp-quick-edit-btn" aria-label="Customize quick reactions" title="Choose your own reactions" aria-expanded="false">${ICON.pencil}</button></div>
+          <div class="wp-quick-edit hidden">
+            <div class="wp-qe-head">
+              <span class="wp-qe-title">Tap a reaction above, then pick its new emoji</span>
+              <button type="button" class="wp-qe-reset">Reset</button>
+              <button type="button" class="wp-qe-done">Done</button>
+            </div>
+            <div class="wp-qe-grid">${EMOJI_SETS.map(([label, list]) => `<div class="wp-qe-label">${label}</div>${list.map((e) => `<button type="button" class="wp-emo" data-pick="${e}" aria-label="Use ${e}"></button>`).join("")}`).join("")}</div>
+            <input class="wp-qe-own" maxlength="16" placeholder="Or type or paste any emoji" aria-label="Type or paste any emoji" />
+          </div>
           <div class="wp-picker hidden">${CHAT_EMOJIS.map((_, i) => `<button type="button" class="wp-emo" data-insert="${i}"></button>`).join("")}</div>
           <form class="wp-input">
             <button type="button" class="wp-tool wp-emoji-btn" aria-label="Insert emoji" title="Emoji">${ICON.smile}</button>
@@ -1482,15 +1523,51 @@
     overlay.querySelector('[data-act="accept"]').addEventListener("click", () => acceptCall());
     overlay.querySelector('[data-act="decline"]').addEventListener("click", () => declineCall());
     overlay.querySelector(".wp-emoji-btn").addEventListener("click", () => {
+      if (quickSlot >= 0) toggleQuickEdit(false);
       overlay.querySelector(".wp-picker").classList.toggle("hidden");
     });
     overlay.querySelector(".wp-voice-btn").addEventListener("click", () => toggleVoiceNote());
     overlay.querySelector(".wp-love").addEventListener("click", () => sendLove());
     overlay.querySelectorAll("[data-react]").forEach((btn) => {
-      const emoji = QUICK[Number(btn.dataset.react)];
-      btn.textContent = emoji;
-      btn.addEventListener("click", () => sendReact(emoji));
+      btn.addEventListener("click", () => {
+        const slot = Number(btn.dataset.react);
+        if (quickSlot >= 0) {
+          quickSlot = slot;
+          paintQuick();
+          return;
+        }
+        sendReact(quick[slot]);
+      });
     });
+    overlay.querySelector(".wp-quick-edit-btn").addEventListener("click", () => toggleQuickEdit(quickSlot < 0));
+    overlay.querySelector(".wp-qe-done").addEventListener("click", () => toggleQuickEdit(false));
+    overlay.querySelector(".wp-qe-reset").addEventListener("click", () => {
+      saveQuick(QUICK.slice());
+      quickSlot = 0;
+      paintQuick();
+    });
+    overlay.querySelectorAll("[data-pick]").forEach((btn) => {
+      btn.textContent = btn.dataset.pick;
+      btn.addEventListener("click", () => pickQuick(btn.dataset.pick));
+    });
+    const own = overlay.querySelector(".wp-qe-own");
+    own.addEventListener("input", () => {
+      const emoji = firstEmoji(own.value);
+      if (emoji) {
+        pickQuick(emoji);
+        own.value = "";
+      }
+    });
+    own.addEventListener("keydown", (e) => {
+      e.stopPropagation(); // keep the page's own shortcuts away while typing
+      if (e.key === "Enter") e.preventDefault();
+      if (e.key === "Escape") toggleQuickEdit(false);
+    });
+    storageGet(["wpQuick"]).then(({ wpQuick }) => {
+      if (Array.isArray(wpQuick) && wpQuick.length === QUICK.length && wpQuick.every(isEmoji)) quick = wpQuick.slice();
+      paintQuick();
+    });
+    paintQuick();
     overlay.querySelectorAll("[data-insert]").forEach((btn) => {
       const emoji = CHAT_EMOJIS[Number(btn.dataset.insert)];
       btn.textContent = emoji;
@@ -1875,6 +1952,52 @@
     note.textContent = `${from || "Someone"} sent you love 💖`;
     layer.appendChild(note);
     setTimeout(() => note.remove(), 3600);
+  }
+
+  function paintQuick() {
+    if (!overlay) return;
+    overlay.querySelectorAll("[data-react]").forEach((btn) => {
+      const slot = Number(btn.dataset.react);
+      btn.textContent = quick[slot] || QUICK[slot];
+      btn.classList.toggle("picking", slot === quickSlot);
+      btn.title = quickSlot >= 0 ? "Change this reaction" : "React on the video";
+      btn.setAttribute("aria-pressed", quickSlot >= 0 ? String(slot === quickSlot) : "false");
+    });
+    const editing = quickSlot >= 0;
+    overlay.querySelector(".wp-emojis")?.classList.toggle("editing", editing);
+    overlay.querySelector(".wp-quick-edit")?.classList.toggle("hidden", !editing);
+    const btn = overlay.querySelector(".wp-quick-edit-btn");
+    if (btn) {
+      btn.classList.toggle("on", editing);
+      btn.setAttribute("aria-expanded", String(editing));
+    }
+    overlay.querySelectorAll("[data-pick]").forEach((b) => b.classList.toggle("in-use", quick.includes(b.dataset.pick)));
+  }
+
+  function toggleQuickEdit(open) {
+    quickSlot = open ? 0 : -1;
+    if (open) overlay?.querySelector(".wp-picker")?.classList.add("hidden");
+    paintQuick();
+  }
+
+  function saveQuick(list) {
+    quick = list;
+    safeSet({ wpQuick: list });
+  }
+
+  function pickQuick(emoji) {
+    if (quickSlot < 0 || !isEmoji(emoji)) return;
+    const next = quick.slice();
+    const already = next.indexOf(emoji);
+    if (already >= 0 && already !== quickSlot) next[already] = next[quickSlot]; // swap instead of duplicating
+    next[quickSlot] = emoji;
+    saveQuick(next);
+    const pop = overlay?.querySelector(`[data-react="${quickSlot}"]`);
+    pop?.classList.remove("swapped");
+    void pop?.offsetWidth;
+    pop?.classList.add("swapped");
+    quickSlot = (quickSlot + 1) % QUICK.length;
+    paintQuick();
   }
 
   function sendReact(emoji) {
@@ -2946,7 +3069,7 @@
       addChat("", `${from} sent you love 💖`, true);
       if (!panelVisible()) bumpUnread(from, "sent you love 💖");
     } else if (msg.t === "react") {
-      if (!QUICK.includes(msg.emoji) && !CHAT_EMOJIS.includes(msg.emoji)) return;
+      if (!isEmoji(msg.emoji)) return;
       floatEmoji(msg.emoji, String(msg.name || "").slice(0, 24));
       if (!panelVisible()) bumpUnread(String(msg.name || "Friend").slice(0, 24), `reacted ${msg.emoji}`);
     } else if (msg.t === "voice") {

@@ -539,7 +539,7 @@ wss.on("connection", (ws) => {
     }
     if (msg.t === "react") {
       if (tooFast(ws, "react", 12, 5000)) return;
-      const emoji = String(msg.emoji || "").slice(0, 8);
+      const emoji = String(msg.emoji || "").slice(0, 16);
       if (!emoji) return;
       broadcast(room, { t: "react", name: cleanName(ws.name), emoji }, ws);
       return;

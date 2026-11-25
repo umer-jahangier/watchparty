@@ -142,7 +142,29 @@ label { display: block; font-size: 13px; font-weight: 600; color: var(--text-3);
 .love:active { transform: scale(0.97); }
 .love-heart { font-size: 17px; display: inline-block; }
 .love.sent .love-heart { animation: beat 0.5s ease-in-out 2; }
-.reacts { display: flex; justify-content: space-between; padding: 2px 0 6px; }
+.reacts { display: flex; align-items: center; justify-content: space-between; padding: 2px 0 6px; }
+.reacts .quick-edit-btn { width: 20px; height: 32px; margin-left: 2px; border-radius: 7px; color: var(--text-3); font-size: 0; transition: color 0.15s, background 0.15s; }
+.reacts .quick-edit-btn:hover { transform: none; color: var(--text); background: var(--ink-3); }
+.reacts .quick-edit-btn.on { color: var(--focus); background: var(--ink-3); }
+.reacts.editing button:not(.quick-edit-btn) { opacity: 0.55; }
+.reacts.editing button:not(.quick-edit-btn):hover { opacity: 0.9; transform: none; }
+.reacts.editing button.picking { opacity: 1; background: var(--ink-3); box-shadow: 0 0 0 1.5px var(--focus), 0 0 14px rgba(201, 166, 255, 0.35); }
+.reacts button.swapped { animation: swap 0.36s var(--ease); }
+@keyframes swap { 0% { transform: scale(0.6); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.quick-edit { margin-bottom: 6px; padding: 8px; border-radius: 12px; background: var(--ink-0); border: 1px solid var(--line); animation: qe-in 0.22s var(--ease); }
+@keyframes qe-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.qe-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.qe-title { flex: 1; min-width: 0; font-size: 12px; line-height: 1.35; color: var(--text-2); }
+.qe-reset, .qe-done { height: 28px; padding: 0 11px; border-radius: 8px; font-size: 12.5px; font-weight: 600; color: var(--text-2); background: var(--ink-2); border: 1px solid var(--line); }
+.qe-reset:hover { color: var(--text); background: var(--ink-3); }
+.qe-done { color: #fff; background: var(--grad); border-color: transparent; }
+.qe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(32px, 1fr)); gap: 2px; max-height: 176px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.qe-grid button { height: 32px; border-radius: 9px; font-size: 19px; line-height: 1; display: grid; place-items: center; }
+.qe-grid button:hover { background: var(--ink-3); }
+.qe-grid button.in-use { background: rgba(139, 92, 246, 0.16); }
+.qe-label { grid-column: 1 / -1; padding: 6px 2px 2px; font-size: 10.5px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+.qe-own { display: block; width: 100%; height: 36px; margin-top: 6px; padding: 0 10px; border-radius: 10px; font-size: 16px; }
+@media (prefers-reduced-motion: reduce) { .reacts button.swapped, .quick-edit { animation: none; } }
 .reacts button, .picker button { width: 32px; height: 32px; border-radius: 9px; font-size: 19px; line-height: 1; display: grid; place-items: center; transition: transform 0.18s var(--ease); }
 .reacts button:hover, .picker button:hover { background: var(--ink-3); transform: translateY(-2px) scale(1.12); }
 .picker { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; padding: 6px; margin-bottom: 6px; border-radius: 12px; background: var(--ink-0); border: 1px solid var(--line); }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WatchParty",
-  "version": "4.6.4",
+  "version": "4.6.5",
   "description": "Watch videos together on any site: synced playback, chat, reactions, voice notes and calls.",
   "action": {
     "default_title": "WatchParty",

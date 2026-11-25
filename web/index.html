@@ -110,6 +110,15 @@
       <div class="compose">
         <button id="love-btn" class="love" type="button"><span class="love-heart" aria-hidden="true">💖</span>Send love</button>
         <div id="reacts" class="reacts"></div>
+        <div id="quick-edit" class="quick-edit hidden">
+          <div class="qe-head">
+            <span class="qe-title">Tap a reaction above, then pick its new emoji</span>
+            <button class="qe-reset" type="button">Reset</button>
+            <button class="qe-done" type="button">Done</button>
+          </div>
+          <div class="qe-grid"></div>
+          <input class="qe-own" maxlength="16" autocomplete="off" placeholder="Or type or paste any emoji" aria-label="Type or paste any emoji" />
+        </div>
         <div id="picker" class="picker hidden"></div>
         <form id="chat-form" class="input">
           <button id="emoji-btn" class="tool" type="button" aria-label="Insert emoji">

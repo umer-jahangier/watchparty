@@ -5,6 +5,35 @@
   const API = "https://cp.praivox.com/wp-api/party/";
   const ROOM_BASE = `${location.origin}/watchparty/web/?room=`;
   const QUICK = ["😂", "❤️", "🥰", "🔥", "👏", "😮", "😭", "🎉", "🍿", "👑"];
+  // Emojis offered when customizing quick reactions (any other emoji can be typed or pasted too).
+  const EMOJI_SETS = [
+    ["Faces", "😀 😁 😂 🤣 😊 😇 🙂 😉 😍 🥰 😘 😋 😜 🤪 😎 🤩 🥳 😏 😅 😬 🙄 😮 😲 😱 🤯 😳 🥺 😢 😭 😤 😡 🤬 🤔 🤫 🤭 😴 🤤 🤮 💀 👻 🤡 😈 🫠 🫣 🫢 🥹 😶 🫡"],
+    ["Love", "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🩷 💖 💕 💞 💓 💗 💘 💝 💌 💋 😻 🌹 💐 💍 🫶 👑"],
+    ["Hands", "👏 🙌 👍 👎 👌 🤌 🤞 ✌️ 🤟 🤘 👊 🙏 💪 🫡 👀 🤝 👋 🫰"],
+    ["Fun", "🔥 ✨ 🎉 🎊 💯 ⭐ 🌟 💫 ⚡ 💥 🍿 🎬 🎮 🎵 🎶 🏆 🥇 🎯 💎 🚀 🌈 ☀️ 🌙 ❄️"],
+    ["Animals & food", "🐶 🐱 🐻 🐼 🦊 🐰 🐨 🐯 🦁 🐸 🐵 🦄 🐝 🦋 🐢 🐙 🍕 🍔 🍟 🍩 🍪 🍫 🍦 ☕ 🧋 🍷 🍻 🍓 🍉 🥑"],
+  ].map(([label, list]) => [label, list.split(" ")]);
+  // One real emoji (flags, keycaps, skin tones and ZWJ sequences included), nothing else.
+  function isEmoji(value) {
+    if (typeof value !== "string" || !value || value.length > 16) return false;
+    if (!/^[\p{Extended_Pictographic}\p{Emoji_Component}\u200d\ufe0f\u20e3]+$/u.test(value)) return false;
+    if (!/[\p{Extended_Pictographic}\p{Regional_Indicator}\u20e3]/u.test(value)) return false;
+    try {
+      return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(value)].length === 1;
+    } catch {
+      return true;
+    }
+  }
+  function firstEmoji(text) {
+    try {
+      for (const { segment } of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(String(text || ""))) {
+        if (isEmoji(segment)) return segment;
+      }
+    } catch {
+      /* ignore */
+    }
+    return "";
+  }
   const CHAT_EMOJIS = ["😀", "😁", "😂", "🤣", "😊", "😍", "😘", "😎", "🤩", "😅", "😢", "😭", "😡", "👍", "👎", "🙏", "👏", "🔥", "❤️", "💯", "🎉", "🍿", "🎬", "💀", "😮", "🤔", "😴", "🤝", "✨", "💜", "🥰", "👑", "🥺", "😻", "💕", "🌸"];
   const LOVE = ["❤️", "🥰", "💕", "💖", "💜"];
   const SYNC_MS = 1400;
@@ -831,7 +860,7 @@
         else chatLine(String(msg.name || "Friend").slice(0, 24), String(msg.text || "").slice(0, 240), msg.queen, msg.icon);
         return;
       case "react":
-        if (QUICK.includes(msg.emoji) || CHAT_EMOJIS.includes(msg.emoji)) burst(msg.emoji, String(msg.name || "").slice(0, 24));
+        if (isEmoji(msg.emoji)) burst(msg.emoji, String(msg.name || "").slice(0, 24));
         return;
       case "love": {
         const from = String(msg.name || "Someone").slice(0, 24);
@@ -1045,17 +1074,110 @@
     });
 
     const reacts = $("reacts");
-    QUICK.forEach((em) => {
+    const quickEdit = $("quick-edit");
+    let quick = QUICK.slice();
+    let quickSlot = -1; // slot being customized, -1 when not editing
+    try {
+      const saved = JSON.parse(store.get("wpw.quick") || "null");
+      if (Array.isArray(saved) && saved.length === QUICK.length && saved.every(isEmoji)) quick = saved;
+    } catch {
+      /* ignore */
+    }
+    const slotBtns = QUICK.map((_, slot) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.textContent = em;
-      b.title = "React on the video";
       b.addEventListener("click", () => {
+        if (quickSlot >= 0) {
+          quickSlot = slot;
+          paintQuick();
+          return;
+        }
+        const em = quick[slot];
         burst(em, me.name);
         sendSecure("react", { emoji: em }, { t: "react", name: me.name, emoji: em });
       });
       reacts.appendChild(b);
+      return b;
     });
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "quick-edit-btn";
+    editBtn.setAttribute("aria-label", "Customize quick reactions");
+    editBtn.title = "Choose your own reactions";
+    editBtn.append(new DOMParser().parseFromString('<svg xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m14.5 7.5 3 3"/></svg>', "image/svg+xml").documentElement);
+    editBtn.addEventListener("click", () => toggleQuickEdit(quickSlot < 0));
+    reacts.appendChild(editBtn);
+    const grid = quickEdit.querySelector(".qe-grid");
+    const pickBtns = [];
+    EMOJI_SETS.forEach(([label, list]) => {
+      const l = document.createElement("div");
+      l.className = "qe-label";
+      l.textContent = label;
+      grid.appendChild(l);
+      list.forEach((em) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = em;
+        b.setAttribute("aria-label", `Use ${em}`);
+        b.addEventListener("click", () => pickQuick(em));
+        grid.appendChild(b);
+        pickBtns.push(b);
+      });
+    });
+    function paintQuick() {
+      const editing = quickSlot >= 0;
+      slotBtns.forEach((b, slot) => {
+        b.textContent = quick[slot];
+        b.classList.toggle("picking", slot === quickSlot);
+        b.title = editing ? "Change this reaction" : "React on the video";
+        b.setAttribute("aria-pressed", editing ? String(slot === quickSlot) : "false");
+      });
+      reacts.classList.toggle("editing", editing);
+      quickEdit.classList.toggle("hidden", !editing);
+      editBtn.classList.toggle("on", editing);
+      editBtn.setAttribute("aria-expanded", String(editing));
+      pickBtns.forEach((b) => b.classList.toggle("in-use", quick.includes(b.textContent)));
+    }
+    function toggleQuickEdit(open) {
+      quickSlot = open ? 0 : -1;
+      if (open) $("picker").classList.add("hidden");
+      paintQuick();
+    }
+    function pickQuick(em) {
+      if (quickSlot < 0 || !isEmoji(em)) return;
+      const next = quick.slice();
+      const already = next.indexOf(em);
+      if (already >= 0 && already !== quickSlot) next[already] = next[quickSlot]; // swap instead of duplicating
+      next[quickSlot] = em;
+      quick = next;
+      store.set("wpw.quick", JSON.stringify(next));
+      const pop = slotBtns[quickSlot];
+      pop.classList.remove("swapped");
+      void pop.offsetWidth;
+      pop.classList.add("swapped");
+      quickSlot = (quickSlot + 1) % QUICK.length;
+      paintQuick();
+    }
+    quickEdit.querySelector(".qe-done").addEventListener("click", () => toggleQuickEdit(false));
+    quickEdit.querySelector(".qe-reset").addEventListener("click", () => {
+      quick = QUICK.slice();
+      store.set("wpw.quick", JSON.stringify(quick));
+      quickSlot = 0;
+      paintQuick();
+    });
+    const own = quickEdit.querySelector(".qe-own");
+    own.addEventListener("input", () => {
+      const em = firstEmoji(own.value);
+      if (em) {
+        pickQuick(em);
+        own.value = "";
+      }
+    });
+    own.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") e.preventDefault();
+      if (e.key === "Escape") toggleQuickEdit(false);
+    });
+    paintQuick();
     const picker = $("picker");
     CHAT_EMOJIS.forEach((em) => {
       const b = document.createElement("button");
@@ -1069,7 +1191,10 @@
       });
       picker.appendChild(b);
     });
-    $("emoji-btn").addEventListener("click", () => picker.classList.toggle("hidden"));
+    $("emoji-btn").addEventListener("click", () => {
+      if (quickSlot >= 0) toggleQuickEdit(false);
+      picker.classList.toggle("hidden");
+    });
 
     $("chat-form").addEventListener("submit", (e) => {
       e.preventDefault();
