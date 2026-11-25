@@ -1,0 +1,54 @@
+<!doctype html><meta charset="utf-8"><title>call e2e</title><pre id="out"></pre>
+<script src="peerjs.min.js"></script>
+<script>
+const log = (s) => (document.getElementById("out").textContent += s + "\n");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function fakeMedia(freq) {
+  const ac = new AudioContext(); const osc = ac.createOscillator(); osc.frequency.value = freq;
+  const dst = ac.createMediaStreamDestination(); osc.connect(dst); osc.start();
+  const cv = Object.assign(document.createElement("canvas"), { width: 160, height: 90 }); const g = cv.getContext("2d");
+  setInterval(() => { g.fillStyle = `hsl(${Date.now() / 10 % 360},80%,50%)`; g.fillRect(0, 0, 160, 90); }, 50);
+  return new MediaStream([...dst.stream.getAudioTracks(), ...cv.captureStream(15).getVideoTracks()]);
+}
+function client(code, name) {
+  return new Promise((resolve) => {
+    const ws = new WebSocket("wss://cp.praivox.com/wp-ws/ws");
+    const c = { ws, name, turn: null, peersMsgs: [] };
+    ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.t === "turn") c.turn = m; if (m.t === "peers") c.peersMsgs.push(m.ids); };
+    ws.onopen = () => { ws.send(JSON.stringify({ t: "hello", code, name, cid: "test" + name + Math.random().toString(36).slice(2, 10) })); resolve(c); };
+  });
+}
+window.runCall = async () => {
+  const code = "T" + Math.random().toString(36).slice(2, 7).toUpperCase();
+  const a = await client(code, "alice");
+  await sleep(500);
+  a.ws.send(JSON.stringify({ t: "turn" }));              // alone in the room: used to be refused
+  await sleep(1500);
+  log("turn granted while alone: " + !!a.turn);
+  const b = await client(code, "bob"); await sleep(400);
+  b.ws.send(JSON.stringify({ t: "turn" })); await sleep(1200);
+  log("turn granted to second: " + !!b.turn);
+  const cfg = (t) => ({ iceServers: [{ urls: t.urls, username: t.username, credential: t.credential }], iceTransportPolicy: "relay" });
+  const mk = (id, t) => new Promise((res, rej) => { const p = new Peer(id, { host: "cp.praivox.com", port: 443, path: "/peerjs/", secure: true, config: cfg(t) }); p.on("open", () => res(p)); p.on("error", rej); });
+  const rid = () => "wp" + Math.random().toString(36).slice(2, 14);
+  const pa = await mk(rid(), a.turn), pb = await mk(rid(), b.turn);
+  log("peerjs signalling open: yes");
+  const result = new Promise((res) => {
+    pb.on("call", (call) => { call.answer(fakeMedia(330)); call.on("stream", () => {}); });
+    const call = pa.call(pb.id, fakeMedia(440));
+    call.on("stream", async (remote) => {
+      const pc = call.peerConnection;
+      for (let i = 0; i < 30 && !["connected", "completed"].includes(pc.iceConnectionState); i++) await sleep(300);
+      await sleep(3000);
+      const stats = await pc.getStats(); let audio = 0, video = 0, pair = "";
+      stats.forEach((r) => { if (r.type === "inbound-rtp") { if (r.kind === "audio") audio = r.bytesReceived; else video = r.bytesReceived; }
+        if (r.type === "candidate-pair" && r.nominated && r.state === "succeeded") { const l = stats.get(r.localCandidateId), rm = stats.get(r.remoteCandidateId); pair = `${l.candidateType}/${l.relayProtocol||l.protocol} -> ${rm.candidateType}`; } });
+      res(`ice=${pc.iceConnectionState} path=${pair} audioBytesIn=${audio} videoBytesIn=${video}`);
+    });
+    setTimeout(() => res("TIMEOUT ice=" + (call.peerConnection?.iceConnectionState)), 25000);
+  });
+  log(await result);
+  pa.destroy(); pb.destroy(); a.ws.close(); b.ws.close();
+  return document.getElementById("out").textContent;
+};
+</script>

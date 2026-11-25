@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8"><title>relay test</title>
+<pre id="out">running…</pre>
+<script>
+const out = document.getElementById("out");
+const log = (s) => (out.textContent += "\n" + s);
+async function run(transport, cred) {
+  const ice = { iceServers: [{ urls: [`${transport}`], username: cred.u, credential: cred.p }], iceTransportPolicy: "relay" };
+  const a = new RTCPeerConnection(ice), b = new RTCPeerConnection(ice);
+  a.onicecandidate = (e) => e.candidate && b.addIceCandidate(e.candidate);
+  b.onicecandidate = (e) => e.candidate && a.addIceCandidate(e.candidate);
+  const ch = a.createDataChannel("t");
+  const got = new Promise((res) => (b.ondatachannel = (e) => (e.channel.onmessage = (m) => res(m.data))));
+  ch.onopen = () => ch.send("hello-through-relay");
+  await a.setLocalDescription(); await b.setRemoteDescription(a.localDescription);
+  await b.setLocalDescription(); await a.setRemoteDescription(b.localDescription);
+  const r = await Promise.race([got, new Promise((r) => setTimeout(() => r("TIMEOUT state=" + a.iceConnectionState), 12000))]);
+  log(`${transport} -> ${r}`); a.close(); b.close();
+}
+window.runAll = async (cred) => {
+  out.textContent = "start";
+  for (const t of ["turn:cp.praivox.com:3478?transport=udp", "turn:cp.praivox.com:3478?transport=tcp", "turns:cp.praivox.com:5349?transport=tcp"]) {
+    try { await run(t, cred); } catch (e) { log(t + " ERR " + e); }
+  }
+  log("done"); return out.textContent;
+};
+</script>

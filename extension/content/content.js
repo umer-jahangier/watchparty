@@ -152,6 +152,10 @@
   let remoteStreams = new Map();
   let pendingCalls = [];
   let heardPeers = new Set();
+  // Peers whose media path (ICE) is actually up; only these count as "connected".
+  const iceLive = new Set();
+  const iceRetries = new Map();
+  let forceRelay = false;
   let turnCred = null;
   let turnWaiters = [];
   let videoPopHidden = false;
@@ -271,6 +275,7 @@
   // End-to-end encryption for chat, voice notes, reactions and love.
   let vpnActive = false;
   let vpnNoted = false;
+  let vpnOffStreak = 0;
   async function refreshVpn() {
     const { wpVpnMode } = await storageGet(["wpVpnMode"]);
     if (!wpVpnMode || !globalThis.WP_VPN) {
@@ -279,6 +284,9 @@
     }
     const r = await globalThis.WP_VPN.check();
     vpnActive = !!r?.vpn;
+    // Re-arm the notice only once the VPN is really off, so it shows once per VPN session.
+    vpnOffStreak = vpnActive ? 0 : vpnOffStreak + 1;
+    if (vpnOffStreak >= 2) vpnNoted = false;
     if (vpnActive && role && !vpnNoted) {
       vpnNoted = true;
       addChat("", "VPN detected. Your party stays connected, and calls go through WatchParty's encrypted relay.", true);
@@ -454,10 +462,18 @@
 
   if (window === window.top) {
     window.addEventListener("online", wakeSocket);
+    let vpnCheckTimer = null;
+    let vpnCheckedAt = 0;
     navigator.connection?.addEventListener?.("change", () => {
       wakeSocket(); // VPN on/off, Wi-Fi switch
-      vpnNoted = false;
-      if (role) refreshVpn();
+      // This event fires constantly on some networks (bandwidth estimates); check at most every 30s.
+      if (!role || vpnCheckTimer) return;
+      const wait = Math.max(0, 30000 - (Date.now() - vpnCheckedAt));
+      vpnCheckTimer = setTimeout(() => {
+        vpnCheckTimer = null;
+        vpnCheckedAt = Date.now();
+        if (role) refreshVpn();
+      }, Math.max(wait, 3000));
     });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") wakeSocket();
@@ -1607,7 +1623,7 @@
 
   function voicePhase() {
     if (!inCall) return "off";
-    if (heardPeers.size) return "live";
+    if (iceLive.size) return "live";
     return "wait";
   }
 
@@ -2113,7 +2129,13 @@
     }
     // Behind a VPN, direct peer connections usually fail (and would bypass the VPN):
     // route calls only through the encrypted TURN relay instead.
-    return vpnActive && turnCred ? { iceServers, iceTransportPolicy: "relay" } : { iceServers };
+    return (vpnActive || forceRelay) && turnCred ? { iceServers, iceTransportPolicy: "relay" } : { iceServers };
+  }
+
+  // PeerJS reads peer.options.config for every new connection, so refresh it before each
+  // call/answer: relay credentials that arrived later are then used too.
+  function applyIce() {
+    if (peer?.options) peer.options.config = iceConfig();
   }
 
   function acceptTurn(msg) {
@@ -2202,6 +2224,8 @@
     try {
       await openCallMedia();
       await ensureCallPeer();
+      await requestTurn();
+      applyIce();
       sendAll({ t: "peer", id: peer.id });
       if (!callStarted) {
         callStarted = true;
@@ -2331,6 +2355,9 @@
     remoteStreams.clear();
     remoteAv.clear();
     heardPeers.clear();
+    iceLive.clear();
+    iceRetries.clear();
+    forceRelay = false;
     document.querySelectorAll("audio[data-call]").forEach((el) => el.remove());
     refreshOverlay();
     if (broadcast) {
@@ -2626,9 +2653,83 @@
     paintVoiceBadge();
   }
 
+  function forgetIce(id) {
+    iceLive.delete(id);
+  }
+
+  function watchIce(call, tries = 0) {
+    const pc = call.peerConnection;
+    if (!pc) {
+      if (tries < 20) setTimeout(() => watchIce(call, tries + 1), 250);
+      return;
+    }
+    let lostTimer = null;
+    const onState = () => {
+      if (calls.get(call.peer) !== call) return;
+      const state = pc.iceConnectionState;
+      clearTimeout(lostTimer);
+      if (state === "connected" || state === "completed") {
+        const first = !iceLive.has(call.peer);
+        iceLive.add(call.peer);
+        iceRetries.delete(call.peer);
+        if (first) refreshOverlay();
+      } else if (state === "failed") {
+        forgetIce(call.peer);
+        refreshOverlay();
+        callFailed(call);
+      } else if (state === "disconnected") {
+        // Often recovers by itself; give it a moment before rebuilding the call.
+        forgetIce(call.peer);
+        refreshOverlay();
+        lostTimer = setTimeout(() => {
+          if (calls.get(call.peer) === call && pc.iceConnectionState !== "connected" && pc.iceConnectionState !== "completed") callFailed(call);
+        }, 8000);
+      } else if (state === "closed") {
+        forgetIce(call.peer);
+        refreshOverlay();
+      }
+    };
+    pc.addEventListener("iceconnectionstatechange", onState);
+    onState();
+  }
+
+  // The direct path did not work: rebuild the call through the encrypted relay.
+  async function callFailed(call) {
+    const id = call.peer;
+    if (calls.get(id) === call) calls.delete(id);
+    try {
+      call.close();
+    } catch {
+      /* ignore */
+    }
+    if (!inCall || !peer?.open) return;
+    const n = iceRetries.get(id) || 0;
+    const who = remoteAv.get(id)?.name || "your friend";
+    if (n >= 3) {
+      if (n === 3) addChat("", `Could not connect audio with ${who}. Try leaving and rejoining the call.`, true);
+      iceRetries.set(id, n + 1);
+      return;
+    }
+    iceRetries.set(id, n + 1);
+    if (n === 0) addChat("", `Reconnecting the call with ${who} through the secure relay…`, true);
+    forceRelay = true;
+    await requestTurn();
+    if (!inCall || !peer?.open) return;
+    applyIce();
+    if (String(peer.id) < String(id)) {
+      meshCallAll();
+    } else {
+      // The other side places the call; nudge it in case it did not notice the failure.
+      setTimeout(() => {
+        if (inCall && !calls.has(id)) sendAll({ t: "recall", peerId: peer?.id || "" });
+      }, 1500 + Math.random() * 1000);
+    }
+  }
+
   function bindCall(call) {
     if (!call) return;
     calls.set(call.peer, call);
+    watchIce(call);
     call.on("stream", (stream) => {
       const first = !heardPeers.has(call.peer);
       heardPeers.add(call.peer);
@@ -2639,19 +2740,26 @@
       }
     });
     call.on("close", () => {
+      if (calls.get(call.peer) !== call) return;
       calls.delete(call.peer);
+      forgetIce(call.peer);
       dropTile(call.peer);
       dropCallAudio(call.peer);
+      refreshOverlay();
     });
     call.on("error", () => {
+      if (calls.get(call.peer) !== call) return;
       calls.delete(call.peer);
+      forgetIce(call.peer);
       dropTile(call.peer);
       dropCallAudio(call.peer);
+      refreshOverlay();
     });
   }
 
   function flushPendingCalls() {
     const queued = pendingCalls.splice(0);
+    applyIce();
     queued.forEach((call) => {
       try {
         call.answer(localStream);
@@ -2668,6 +2776,7 @@
 
   function meshCallAll() {
     if (!peer?.open || !localStream || !inCall) return;
+    applyIce();
     knownIds.forEach((id) => {
       if (!id || id === peer.id || calls.has(id)) return;
       if (String(peer.id) > String(id)) return;
@@ -2717,7 +2826,9 @@
   }
 
   function wireIncomingCalls(p) {
-    p.on("call", (call) => {
+    p.on("call", async (call) => {
+      // The party relay announces peer ids; a call can race ahead of that message.
+      for (let i = 0; i < 12 && !knownIds.has(call.peer); i++) await new Promise((r) => setTimeout(r, 250));
       if (!knownIds.has(call.peer)) {
         try {
           call.close();
@@ -2726,6 +2837,16 @@
         }
         return;
       }
+      const old = calls.get(call.peer);
+      if (old && old !== call) {
+        calls.delete(call.peer);
+        try {
+          old.close();
+        } catch {
+          /* ignore */
+        }
+      }
+      applyIce();
       if (!localStream) {
         pendingCalls.push(call);
         return;
@@ -2874,6 +2995,7 @@
         remoteAv.delete(msg.peerId);
         remoteStreams.delete(msg.peerId);
         heardPeers.delete(msg.peerId);
+        iceLive.delete(msg.peerId);
         dropTile(msg.peerId);
         dropCallAudio(msg.peerId);
         const existing = calls.get(msg.peerId);
@@ -2960,6 +3082,9 @@
     remoteStreams.clear();
     remoteAv.clear();
     heardPeers.clear();
+    iceLive.clear();
+    iceRetries.clear();
+    forceRelay = false;
     hiddenCams.clear();
     pendingCalls = [];
     unread = 0;
@@ -2977,6 +3102,8 @@
     unbindVideo();
     try {
       if (socket) socket.onclose = null;
+      // A real goodbye, so the others see "left" right away (dropped connections get a grace period).
+      if (socket?.readyState === 1) socket.send(JSON.stringify({ t: "leave" }));
       socket?.close();
     } catch {
       /* ignore */

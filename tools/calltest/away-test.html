@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>away test</title><pre id="out"></pre><script>
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+const seen=[];
+function join(code,name,cid,resume){return new Promise(res=>{const ws=new WebSocket("wss://cp.praivox.com/wp-ws/ws");ws.onopen=()=>{ws.send(JSON.stringify({t:"hello",code,name,cid,resume}));res(ws);};ws.onmessage=e=>{const m=JSON.parse(e.data);if(name==="watcher"&&(m.t==="left"||m.t==="joined"||m.t==="hang"))seen.push(`${((Date.now()-t0)/1000).toFixed(1)}s ${m.t} ${m.name}`);};});}
+let t0;
+window.runAway=async()=>{
+  const code="A"+Math.random().toString(36).slice(2,7).toUpperCase(); t0=Date.now();
+  await join(code,"watcher","watchercid"+Math.random().toString(36).slice(2,8));
+  let b=await join(code,"blip","blipcid12345"); await sleep(800);
+  seen.push(`${((Date.now()-t0)/1000).toFixed(1)}s --blip drops`); b.close(); await sleep(4000);
+  b=await join(code,"blip","blipcid12345",true); seen.push(`${((Date.now()-t0)/1000).toFixed(1)}s --blip back`); await sleep(2000);
+  let c=await join(code,"leaver","leavercid1234"); await sleep(800);
+  seen.push(`${((Date.now()-t0)/1000).toFixed(1)}s --leaver says goodbye`); c.send('{"t":"leave"}'); c.close(); await sleep(2000);
+  seen.push(`${((Date.now()-t0)/1000).toFixed(1)}s --blip drops for good`); b.close(); await sleep(23000);
+  return seen.join("\n");
+};</script>

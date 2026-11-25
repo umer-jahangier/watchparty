@@ -9,6 +9,7 @@ try {
 } catch {
   console.error("watchparty turn secret missing");
 }
+const AWAY_GRACE_MS = 20 * 1000; // how long a dropped connection may come back before "left" is shown
 const TURN_TTL = 4 * 3600;
 
 const ICONS = new Set(["fox", "cat", "panda", "frog", "bear", "bunny", "owl", "bot", "alien", "ghost", "star", "moon", "pop", "crown", "dino", "comet"]);
@@ -332,6 +333,14 @@ wss.on("connection", (ws) => {
           if (member !== ws && member.cid === cid) replaced = member;
         }
       }
+      let returning = null;
+      if (cid && room.away && room.away.has(cid)) {
+        // Back within the grace period (network blip, VPN switch, page reload): nobody "left".
+        returning = room.away.get(cid);
+        clearTimeout(returning.timer);
+        room.away.delete(cid);
+        if (!ws.peerId && returning.peerId) ws.peerId = returning.peerId;
+      }
       if (replaced) {
         // Same browser tab reconnecting: drop its stale socket quietly.
         replaced.replaced = true;
@@ -379,12 +388,16 @@ wss.on("connection", (ws) => {
         e2e: !!room.e2e,
         people: roster(room),
       }));
-      if (!replaced && !msg.resume) broadcast(room, { t: "joined", name: ws.name, icon: ws.icon }, ws);
+      if (!replaced && !returning && !msg.resume) broadcast(room, { t: "joined", name: ws.name, icon: ws.icon }, ws);
       broadcast(room, { t: "roster", people: roster(room) });
       return;
     }
     if (!ws.room) return;
     const room = ws.room;
+    if (msg.t === "leave") {
+      ws.leaving = true; // a real goodbye: announce it right away when the socket closes
+      return;
+    }
     if ((msg.t === "state" || msg.t === "sync") && ws.role === "host" && msg.beat) {
       if (tooFast(ws, "beat", 4, 1000)) return;
       if (Date.now() < (room.actionUntil || 0)) return;
@@ -441,7 +454,7 @@ wss.on("connection", (ws) => {
     }
     if (msg.t === "turn") {
       if (tooFast(ws, "turn", 6, 60000)) return;
-      if (room.members.size < 2 || ipTooFast(ws.ip || "?", "turn", 20, 60 * 60 * 1000)) return;
+      if (ipTooFast(ws.ip || "?", "turn", 30, 60 * 60 * 1000)) return;
       const grant = turnGrant();
       if (!grant) return;
       ws.send(JSON.stringify(grant));
@@ -541,15 +554,35 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     if (!ws.room || ws.replaced) return;
-    if (ws.room.buffers) ws.room.buffers.delete(ws);
-    ws.room.members.delete(ws);
-    broadcast(ws.room, { t: "left", name: ws.name || "Someone" });
-    broadcast(ws.room, { t: "roster", people: roster(ws.room) });
-    if (ws.peerId) {
-      broadcast(ws.room, { t: "hang", name: ws.name || "Someone", peerId: ws.peerId, video: false });
-      broadcast(ws.room, { t: "peers", ids: peerIds(ws.room) });
+    const room = ws.room;
+    if (room.buffers) room.buffers.delete(ws);
+    room.members.delete(ws);
+    broadcast(room, { t: "roster", people: roster(room) });
+    const gone = () => {
+      // Still away (or they really said goodbye): now tell the others, and end their call link.
+      broadcast(room, { t: "left", name: ws.name || "Someone" });
+      if (ws.peerId && ![...room.members].some((m) => m.peerId === ws.peerId)) {
+        broadcast(room, { t: "hang", name: ws.name || "Someone", peerId: ws.peerId, video: false });
+        broadcast(room, { t: "peers", ids: peerIds(room) });
+      }
+    };
+    if (ws.leaving || !ws.cid) {
+      gone();
+    } else {
+      // Connection dropped without a goodbye: wait a little before announcing it.
+      if (!room.away) room.away = new Map();
+      const prev = room.away.get(ws.cid);
+      if (prev) clearTimeout(prev.timer);
+      if (room.away.size < 32) {
+        const timer = setTimeout(() => {
+          if (room.away.get(ws.cid)?.timer !== timer) return;
+          room.away.delete(ws.cid);
+          gone();
+        }, AWAY_GRACE_MS);
+        room.away.set(ws.cid, { timer, peerId: ws.peerId || "" });
+      } else gone();
     }
-    if (ws.room.members.size === 0) {
+    if (room.members.size === 0) {
       ws.room.updated = Date.now();
       setTimeout(() => {
         if (ws.room.members.size === 0 && rooms.get(ws.room.code) === ws.room) rooms.delete(ws.room.code);

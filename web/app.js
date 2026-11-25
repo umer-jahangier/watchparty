@@ -922,6 +922,7 @@
     if (party.socket) {
       party.socket.onclose = null;
       try {
+        if (party.socket.readyState === 1) party.socket.send(JSON.stringify({ t: "leave" }));
         party.socket.close();
       } catch {
         /* ignore */
