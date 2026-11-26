@@ -37,6 +37,87 @@ function waitDownload(id) {
   });
 }
 
+// Where WatchParty may live inside the Downloads folder. Windows "Extract All" on WatchParty.zip
+// creates WatchParty\WatchParty, so that is tried too.
+const FOLDERS = ["WatchParty", "WatchParty/WatchParty"];
+const PROMPT_MS = 2500; // a tiny file that takes longer than this was almost surely a "Save as" dialog
+let promptWarned = false;
+
+async function saveFile(relPath, buf, mime) {
+  const url = URL.createObjectURL(new Blob([buf], { type: mime }));
+  try {
+    const id = await chrome.downloads.download({ url, filename: relPath, conflictAction: "overwrite", saveAs: false });
+    const done = await waitDownload(id);
+    return { id, saved: String(done?.filename || "") };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function forget(id, removeFromDisk) {
+  if (removeFromDisk) chrome.downloads.removeFile(id).catch?.(() => {});
+  chrome.downloads.erase({ id }).catch?.(() => {});
+}
+
+function folderOf(fullPath) {
+  return fullPath.replace(/[\\/][^\\/]*$/, "");
+}
+
+class UpdateStop extends Error {
+  constructor(message, action) {
+    super(message);
+    this.action = action;
+  }
+}
+
+// Writes one small file, then reads it back through the extension itself. Only the folder
+// Chrome actually runs WatchParty from serves it back, so this finds the right folder and
+// reveals a "Save as" dialog before any real file is touched.
+async function findInstallFolder() {
+  const token = crypto.randomUUID();
+  const body = new TextEncoder().encode(`WatchParty update check ${token}\n`);
+  let firstSaved = "";
+  for (let i = 0; i < FOLDERS.length; i += 1) {
+    const started = Date.now();
+    let probe;
+    try {
+      probe = await saveFile(`${FOLDERS[i]}/wp-update-check.txt`, body, "text/plain");
+    } catch (err) {
+      if (i === 0 && /USER_CANCELED|interrupted/i.test(String(err?.message))) throw promptStop();
+      throw err;
+    }
+    if (i === 0 && !promptWarned && Date.now() - started > PROMPT_MS) {
+      forget(probe.id, true);
+      throw promptStop();
+    }
+    if (i === 0) firstSaved = folderOf(probe.saved);
+    let served = "";
+    try {
+      served = await fetch(`${chrome.runtime.getURL("wp-update-check.txt")}?t=${Date.now()}`, { cache: "no-store" }).then((r) => (r.ok ? r.text() : ""));
+    } catch {
+      /* not this folder */
+    }
+    forget(probe.id, true);
+    if (served.includes(token)) return FOLDERS[i];
+  }
+  throw new UpdateStop(
+    `Chrome saves updates to "${firstSaved || "Downloads\\WatchParty"}", but WatchParty is running from a different folder, ` +
+      "so it can't update itself. Fix it once: download WatchParty.zip again, extract it into your Downloads folder, " +
+      "then in chrome://extensions remove WatchParty and use Load unpacked on the new WatchParty folder (the one with manifest.json inside).",
+    { label: "Download WatchParty.zip", url: "https://cp.praivox.com/watchparty/" }
+  );
+}
+
+function promptStop() {
+  promptWarned = true;
+  return new UpdateStop(
+    "Your browser is set to ask where to save every download, so updating would open a Save dialog for each file. " +
+      "Turn off \"Ask where to save each file before downloading\" in download settings, then click Try again. " +
+      "(If no dialog appeared, just click Try again.)",
+    { label: "Open download settings", url: "chrome://settings/downloads" }
+  );
+}
+
 function showUpdate(rel) {
   $("update").classList.remove("hidden");
   $("update-title").textContent = `WatchParty ${rel.version} is ready`;
@@ -62,24 +143,17 @@ async function applyUpdate() {
     } catch {
       /* older Chrome */
     }
+    const folder = await findInstallFolder();
     const ordered = files.filter((f) => f.path !== "manifest.json").concat(files.filter((f) => f.path === "manifest.json"));
     for (let i = 0; i < ordered.length; i += 1) {
       const path = ordered[i].path;
-      const url = URL.createObjectURL(new Blob([ordered[i].buf], { type: mimeFor(path) }));
-      try {
-        const id = await chrome.downloads.download({ url, filename: `WatchParty/${path}`, conflictAction: "overwrite", saveAs: false });
-        const done = await waitDownload(id);
-        // Make sure Chrome saved it under exactly the right name; otherwise remove the stray copy and stop.
-        const saved = String(done?.filename || "").replace(/\\/g, "/");
-        if (!saved.endsWith(`/WatchParty/${path}`)) {
-          await chrome.downloads.removeFile(id).catch?.(() => {});
-          chrome.downloads.erase({ id }).catch?.(() => {});
-          throw new Error(`Chrome saved ${path} under a different name, so the update stopped safely before installing it.`);
-        }
-        chrome.downloads.erase({ id }).catch?.(() => {});
-      } finally {
-        URL.revokeObjectURL(url);
+      const { id, saved } = await saveFile(`${folder}/${path}`, ordered[i].buf, mimeFor(path));
+      // Make sure Chrome saved it under exactly the right name; otherwise remove the stray copy and stop.
+      if (!saved.replace(/\\/g, "/").endsWith(`/${folder}/${path}`)) {
+        forget(id, true);
+        throw new Error(`Chrome saved ${path} under a different name, so the update stopped safely before installing it.`);
       }
+      forget(id, false);
       fill(0.5 + ((i + 1) / ordered.length) * 0.5);
     }
     const disk = await fetch(`${chrome.runtime.getURL("manifest.json")}?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.json());
@@ -96,6 +170,14 @@ async function applyUpdate() {
     btn.disabled = false;
     btn.textContent = "Try again";
     help.textContent = err.message || String(err);
+    if (err instanceof UpdateStop && err.action) {
+      const link = document.createElement("button");
+      link.type = "button";
+      link.className = "update-fix";
+      link.textContent = err.action.label;
+      link.addEventListener("click", () => chrome.tabs.create({ url: err.action.url }));
+      help.append(document.createElement("br"), link);
+    }
     help.classList.remove("hidden");
   } finally {
     try {

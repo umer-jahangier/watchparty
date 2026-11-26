@@ -112,3 +112,5 @@ footer a { color: #dcc8ff; text-underline-offset: 2px; }
 .code.flash { animation: code-flash 0.6s ease-out; }
 @keyframes code-flash { 0% { color: #34d399; } 100% { color: inherit; } }
 @media (prefers-reduced-motion: reduce) { .copied, .code.flash { animation: none; } }
+.update-fix { margin-top: 8px; height: 30px; padding: 0 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.18); color: #fff; font-weight: 600; font-size: 12.5px; cursor: pointer; }
+.update-fix:hover { background: rgba(255, 255, 255, 0.16); }
